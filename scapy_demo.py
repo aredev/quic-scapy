@@ -4,7 +4,7 @@ import socket
 from scapy import route
 from scapy.config import conf
 from scapy.layers.inet import IP, UDP
-from scapy.layers.l2 import Ether, Raw
+from scapy.layers.l2 import Ether, Raw, bind_layers
 from scapy.sendrecv import sr1, send, sr, sniff
 from scapy.supersocket import L3RawSocket
 from scapy.utils import hexdump
@@ -21,18 +21,14 @@ def send_chlo():
     # L3RawSocket()
     conf.L3socket = L3RawSocket
 
-    p = IP(dst="192.168.1.69") / UDP(dport=6121, sport=5050) / chlo
+    p = IP(dst="192.168.43.228") / UDP(dport=6121, sport=5050) / chlo
     # print(p.show())
     ans, _ = sr(p)
-    data = ans[0][1][1].payload
-    # hexdump(data)
-    # print(data)
-    # print(ans[UDP].show())
-    # data = ans[0][1]
-    # print(data)
-    # a = VersionNegotiationPacket(data)
-    # print(a.show())
+    # Maybe we cannot assume that is just a version negotiation packet?
+    a = VersionNegotiationPacket(ans[0][1][1].payload.load)
+    print(a.show())
     # print(a.summary())
+    # print(a)
 
 
 send_chlo()
@@ -45,14 +41,15 @@ def send_version_proposal():
     # L3RawSocket()
     conf.L3socket = L3RawSocket
 
-    p = IP(dst="192.168.1.69") / UDP(dport=6121, sport=5050) / version_proposal
+    p = IP(dst="192.168.43.228") / UDP(dport=6121, sport=5050) / version_proposal
     # print(p.show())
     ans, _ = sr(p)
-    print(ans)
+    s = str(ans)
+    print(s)
     # data = ans[0][1][1].payload
 
 
-send_version_proposal()
+# send_version_proposal()
 
 def create_n_bytes_from_string(long_byte, name):
     n = 2
