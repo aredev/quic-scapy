@@ -5,7 +5,7 @@ from scapy.fields import *
 class VersionProposalPacket(Packet):
     fields_desc = [
         XByteField("Public Flags", 0x0d),
-        XLongField("CID", int("f5789f791843c6a7", 16)),
+        XLongField("CID", int("39b18ffea95af9fb", 16)),
         PacketField("Version", "Q041", "Q041"),
         ByteField("Packet Number", 2),
         XByteField("message_authentication_hash0", 0xff),
