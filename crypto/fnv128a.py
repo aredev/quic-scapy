@@ -2,17 +2,28 @@ import binascii
 import struct
 
 from crypto.GoogleFNV128Hash import GoogleFNV128Hash
+# from crypto.dhke import dhke
 
 
 class FNV128A:
 
     @staticmethod
-    def generate_hash(public_flags, cid, version, packet_number, body):
+    def print_like_go(info):
+        info_as_string = "".join(map(chr, info))
+        info_quic_style = [ord(c) for c in info_as_string]
+        print(info_quic_style)
+
+    @staticmethod
+    def generate_hash(associated_data, body):
         h = GoogleFNV128Hash()
-        associated_data = public_flags + cid + version + packet_number
+
         h.write(associated_data)
         h.write(body)
-        h.write("Client".encode("utf-8"))
+        h.write("Client".encode("utf-8"), cast=False)
+
+        # FNV128A.print_like_go(associated_data)
+
+        # FNV128A.print_like_go(body)
 
         big_endian_high, big_endian_low = h.sum128()
         print("Low {} High {}".format(big_endian_low, big_endian_high))

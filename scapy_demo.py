@@ -1,3 +1,5 @@
+import binascii
+import struct
 from _curses import raw
 
 import socket
@@ -19,13 +21,15 @@ from VersionProposalPacket import VersionProposalPacket
 from crypto.fnv128a import FNV128A
 from crypto.hkdf import Hkdf
 from util.SessionInstance import SessionInstance
+from util.packet_to_hex import extract_from_packet
+from util.string_to_ascii import string_to_ascii
 
-destination_ip = "192.168.1.70"
-server_config_id = ""
+destination_ip = "192.168.43.228"
 
 
 def send_chlo():
     chlo = QUICHeader()
+
     # L3RawSocket()
     conf.L3socket = L3RawSocket
 
@@ -35,15 +39,11 @@ def send_chlo():
     a = RejectionPacket(ans[0][1][1].payload.load)
 
     for key, value in a.fields.items():
-        print("Key:{}==Value:{}".format(key, value))
-
-    server_config_id_key = "﻿Server_Config_ID_Value"
-    server_config_id = a.fields[server_config_id_key]
-    print(server_config_id)
-    # print(a.fields.get_field('﻿Server_Config_ID_Value')) # Retrieving a value from a packet
-    session = SessionInstance.get_instance()
-    # session.server_config_id = server_config_id
-    # print(a)
+        if "Server_Config_ID" in key:
+            print("Key {} has this value {}".format(key, value))
+            SessionInstance.get_instance().server_config_id = value
+        if "Source_Address_Token" in key:
+            SessionInstance.get_instance().source_address_token = value
 
 send_chlo()
 
@@ -73,6 +73,7 @@ def send_second_ack():
 
 send_second_ack()
 
+
 def send_version_proposal():
     version_proposal = VersionProposalPacket()
 
@@ -87,14 +88,24 @@ def send_version_proposal():
 
 
 def send_full_chlo():
-    chlo = FullCHLOPacket()
+    print("Server config id according to session {}".format(SessionInstance.get_instance().server_config_id))
 
-    public_flags = chlo.fields['Public Flags']
-    cid = chlo.fields['CID']
-    version = chlo.fields['Version']
-    packet_number = chlo.fields['Packet Number']
-    # print(chlo.get_field('Public Flags').default)
-    FNV128A().generate_hash(public_flags, cid, version, packet_number, bytes())
+    chlo = FullCHLOPacket()
+    chlo.setfieldval('SCID_Value', SessionInstance.get_instance().server_config_id)
+    chlo.setfieldval('STK_Value', SessionInstance.get_instance().source_address_token)
+
+    associated_data = extract_from_packet(chlo, end=15)
+    body = extract_from_packet(chlo, start=27)
+
+    print(associated_data)
+    print(body)
+
+    message_authentication_hash = FNV128A().generate_hash(associated_data, body)
+    print("Computed message authentication hash {}".format(message_authentication_hash))
+
+    chlo.setfieldval('Message Authentication Hash', string_to_ascii(message_authentication_hash))
+
+    # Set the MAH to the field
 
     # L3RawSocket()
     conf.L3socket = L3RawSocket
@@ -108,7 +119,7 @@ def send_full_chlo():
 
 
 
-# send_full_chlo()
+send_full_chlo()
 
 
 def send_encrypted_request():

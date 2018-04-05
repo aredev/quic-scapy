@@ -20,11 +20,20 @@ class GoogleFNV128Hash:
         print("Input for hash: {}".format(self.sum))
         return self.sum['v3'] << 32 | self.sum['v2'], self.sum['v1'] << 32 | self.sum['v0']
 
-    def write(self, data):
+    def write(self, data, cast=True):
+        """
+        Data is now a full string received from the
+        :param data:
+        :return:
+        """
         fnv128prime_low = 0x0000013B
         fnv128prime_shift = 24
 
+        print("Writing following data in hash {}".format(data))
         for byte in data:
+            if cast:
+                byte = int(byte, 16)
+
             self.sum['v0'] ^= byte
 
             t0 = self.sum['v0'] * fnv128prime_low

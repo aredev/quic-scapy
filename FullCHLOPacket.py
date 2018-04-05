@@ -1,6 +1,7 @@
 from scapy.fields import *
 from scapy.packet import Packet
 
+from util.SessionInstance import SessionInstance
 from util.string_to_ascii import string_to_ascii
 
 
@@ -10,6 +11,10 @@ class FullCHLOPacket(Packet):
     Taken from Wireshark Capture example-local-clemente-aesgcm
     """
     name = "FullCHLO"
+    server_config_id = "-2"
+
+    def set_server_config_id(self, id):
+        self.server_config_id = id
 
     fields_desc = [
         XByteField("Public Flags", 0x19),
@@ -18,7 +23,7 @@ class FullCHLOPacket(Packet):
         LEShortField("Packet Number", 1024),
 
         # Message authentication hash
-        StrFixedLenField("Message Authentication Hash", string_to_ascii("f4c7a92baf6751477060c529"), 12),
+        StrFixedLenField("Message Authentication Hash", string_to_ascii(""), 12),
 
         XByteField("Frame Type", 0x84),
         XByteField("StreamId", 1),
@@ -730,7 +735,8 @@ class FullCHLOPacket(Packet):
         StrFixedLenField("CCS_Value", string_to_ascii("01e8816092921ae87eed8086a2158291"), 16),
         StrFixedLenField("NONC_Value", string_to_ascii("5ac349e90091b5556f1a3c52eb57f92c12640e876e26ab2601c02b2a32f54830"), 32),
         PacketField("AEAD_Value", "AESG", "AESG"),
-        StrFixedLenField("SCID_Value", string_to_ascii("aba521b88ed73512969e28a1105a05e9"), 16),
+        # Set the server config id to the value received in the REJ packet.
+        StrFixedLenField("SCID_Value", "", 16),
         PacketField("PDMD_Value", "X509", "X509"),
         LEIntField("ICSL_Value", 30),
         StrFixedLenField("PUBS_Value", string_to_ascii("1403c2f3138a820f8114f282c4837d585bd00782f4ec0e5f1d39c06c49cc8043"), 32),
@@ -739,5 +745,4 @@ class FullCHLOPacket(Packet):
         StrFixedLenField("XLCT_Value", string_to_ascii("7accfb0fbd674011"), 8),
         LEIntField("CFCW_Value", 49152),
         LEIntField("SFCW_Value", 32768),
-
     ]
