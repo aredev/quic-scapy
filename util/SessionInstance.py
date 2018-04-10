@@ -2,6 +2,13 @@ class SessionInstance:
     __instance = None
     server_config_id = ""
     source_address_token = ""
+    public_value = ""
+    private_value = None
+    chlo = ""
+    scfg = ""
+    cert = ""
+    server_nonce = ""
+    shared_key = ""
 
     @staticmethod
     def get_instance():
