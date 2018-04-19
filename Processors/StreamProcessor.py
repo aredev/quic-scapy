@@ -1,8 +1,12 @@
+import json
+import os
+
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from Processors.Processor import Processor
 from util.SessionInstance import SessionInstance
 from util.processor_hex_number_to_int import processor_hex_to_int
+from subprocess import call
 
 
 class StreamProcessor(Processor):
@@ -57,10 +61,15 @@ class StreamProcessor(Processor):
 
         # Now only the stream data is left
 
-    def process(self):
-        self.parse_frame_header()
-        derived_shared_key = SessionInstance.get_instance().shared_key
+    def create_crypto_request_file(self, data: dict):
+        with open('request.json', 'w') as file:
+            json.dump(data, file)
 
+    def process(self):
+        """
+        Assumption, the stream frame is last. FIXME
+        :return:
+        """
         if self.data_length_present:
             # If the data length is present, then there might be an additional frame. So care must be taken when processing.
             ciphertext = self.packet_body[self.reader:self.reader+self.data_length]
@@ -69,6 +78,36 @@ class StreamProcessor(Processor):
             # Otherwise, the remainder of the packet is the data. So we must clear the packet body.
             ciphertext = self.packet_body[self.reader:]
             self.reader += len(ciphertext)
+
         print(len(ciphertext))
-        # gcm_instance = AESGCM(key=derived_shared_key)
-        print("Decrypting it... {}".format(ciphertext))
+
+        # Nonce is iv[0:4] || packetnumber as long (8 bytes)
+
+        # associated data, again is from the public bytes until (inclusive) packet number. 0:42
+        associated_data = SessionInstance.get_instance().associated_data
+        packet_number_byte = SessionInstance.get_instance().packet_number
+        packet_number = int(packet_number_byte).to_bytes(8, byteorder='little')
+        nonce = SessionInstance.get_instance().keys['iv2'][0:4] + packet_number
+
+        # Maybe this operation?
+        # Prepend the message authentication hash
+        message_authentication_hash = SessionInstance.get_instance().message_authentication_hash
+        ciphertext = "".join(ciphertext)
+        ciphertext = message_authentication_hash + bytes.fromhex(ciphertext)
+        # ciphertext = bytes.fromhex(ciphertext)
+
+        print(SessionInstance.get_instance().keys)
+
+        request_data = {
+            'mode': 'decryption',
+            'input': ciphertext.hex(),
+            'additionalData': associated_data,
+            'nonce': nonce.hex(),
+            'key': SessionInstance.get_instance().keys['key2'].hex()    # other key, used for decryption,.
+        }
+
+        print(request_data)
+
+        self.create_crypto_request_file(request_data)
+        os.rename("/Users/abdullahrasool/PycharmProjects/quic-scapy/request.json", "/Users/abdullahrasool/go/src/quic-aes-singleton/request.json")
+        call('go run /Users/abdullahrasool/go/src/quic-aes-singleton/crypto.go')

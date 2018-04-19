@@ -11,10 +11,6 @@ class FullCHLOPacket(Packet):
     Taken from Wireshark Capture example-local-clemente-aesgcm
     """
     name = "FullCHLO"
-    server_config_id = "-2"
-
-    def set_server_config_id(self, id):
-        self.server_config_id = id
 
     fields_desc = [
         XByteField("Public Flags", 0x19),

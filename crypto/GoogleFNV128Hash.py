@@ -23,13 +23,13 @@ class GoogleFNV128Hash:
     def write(self, data, cast=True):
         """
         Data is now a full string received from the
+        :param cast:
         :param data:
         :return:
         """
         fnv128prime_low = 0x0000013B
         fnv128prime_shift = 24
 
-        print("Writing following data in hash {}".format(data))
         for byte in data:
             if cast:
                 byte = int(byte, 16)
