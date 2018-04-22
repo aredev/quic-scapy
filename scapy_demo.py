@@ -152,7 +152,14 @@ def send_full_chlo():
 
 
 def send_encrypted_request():
-    pass
+    """
+    Make an AEAD GET Request to example.org
+    :return:
+    """
+    get_request = bytes.fromhex("800300002501250000000500000000FF418FF1E3C2E5F23A6BA0AB9EC9AE38110782848750839BD9AB7A85ED6988B4C7")
+    # Todo: encrypt
+
+    # Todo: send it
 
 
 def connect_to_crypto_oracle():
