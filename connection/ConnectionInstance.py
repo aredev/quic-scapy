@@ -28,7 +28,7 @@ class ConnectionInstance:
             # Connect with the crypto oracle
             self.crypto_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
-                self.crypto_socket.connect(("192.168.1.70", 3030))
+                print("Connecting with Oracle")
                 ConnectionInstance.__instance = self
                 print("Connected with Crypto Oracle")
             except ConnectionRefusedError:
@@ -58,13 +58,19 @@ class ConnectionInstance:
         self.learner_connection.close()
 
     def send_message(self, endpoint, msg: bytes, expect_answer=False):
+        #Todo: remove singleton, just make it a static method.
         if endpoint == ConnectionEndpoint.CRYPTO_ORACLE:
+            print("Sending message ...")
+            self.crypto_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.crypto_socket.connect(("192.168.1.70", 3030))
             self.crypto_socket.send(msg)
             if expect_answer:
                 # Arbitrary big sized buffer
+                print("Waiting for response...")
                 data = self.crypto_socket.recv(555555)
                 decoded_data = data.decode('utf-8')
                 return json.loads(decoded_data)
+            self.crypto_socket.close()
         else:
             raise NotImplementedError("Currently only Crypto Oracle")
 

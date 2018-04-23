@@ -1,9 +1,4 @@
-import binascii
 import json
-import struct
-import timeit
-from _curses import raw
-
 import socket
 from scapy import route # DO NOT REMOVE!!
 from scapy.config import conf
@@ -15,6 +10,7 @@ from scapy.utils import hexdump
 
 from ACKPacket import ACKPacket
 from AEADPacket import AEADPacket
+from AEADRequestPacket import AEADRequestPacket
 from FullCHLOPacket import FullCHLOPacket
 from QUIC import QUICHeader
 from RejectionPacket import RejectionPacket
@@ -139,6 +135,7 @@ def send_full_chlo():
             print("Message authentication hash has value {}".format(value.hex()))
             SessionInstance.get_instance().message_authentication_hash = value
         if "Packet" in key:
+            SessionInstance.get_instance().packet_number = value
             packet_number = value
 
     dhke.generate_keys(SessionInstance.get_instance().peer_public_value)
@@ -161,12 +158,36 @@ def send_encrypted_request():
     Make an AEAD GET Request to example.org
     :return:
     """
-    get_request = bytes.fromhex("800300002501250000000500000000FF418FF1E3C2E5F23A6BA0AB9EC9AE38110782848750839BD9AB7A85ED6988B4C7")
-    # Todo: encrypt
+    get_request = "800300002501250000000500000000FF418FF1E3C2E5F23A6BA0AB9EC9AE38110782848750839BD9AB7A85ED6988B4C7"
+    print(SessionInstance.get_instance().peer_public_value)
+    keys = dhke.generate_keys(SessionInstance.get_instance().peer_public_value, True)
 
-    # Todo: send it
+    next_packet_number_int = int(SessionInstance.get_instance().packet_number)+1
+    SessionInstance.get_instance().packet_number = next_packet_number_int
+    next_packet_number_byte = int(next_packet_number_int).to_bytes(8, byteorder='little')
+
+    request = {
+        'mode': 'encryption',
+        'input': get_request,
+        'key': keys['key1'].hex(),     # For encryption, we use my key
+        'additionalData': "18FDF278D7E28726ED0005",  # Fixed public flags 18 || fixed connection Id
+        'nonce': keys['iv1'].hex() + next_packet_number_byte.hex()
+    }
+
+    print(request)
+    ciphertext = ConnectionInstance.get_instance().send_message(ConnectionEndpoint.CRYPTO_ORACLE, json.dumps(request).encode('utf-8'), True)
+    print(ciphertext['data'])
+    ciphertext = ciphertext['data']
+
+    # Send it to the server
+    a = AEADRequestPacket()
+    a.setfieldval("Public Flags", 0x18)
+    a.setfieldval('Packet Number', next_packet_number_int)
+    a.setfieldval("Message Authentication Hash", string_to_ascii(ciphertext[0:24]))
+
+    p = IP(dst=destination_ip) / UDP(dport=6121, sport=61250) / a / Raw(load=string_to_ascii(ciphertext[12:]))
+    ans, _ = sr(p)
+    print(ans)
 
 
-
-
-
+send_encrypted_request()
