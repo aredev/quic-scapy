@@ -27,12 +27,13 @@ class dhke:
         SessionInstance.get_instance().private_value = private_key
 
     @staticmethod
-    def generate_keys(peer_public_value: bytes):
+    def generate_keys(peer_public_value: bytes, forward_secure=False):
         """
         Method that implements Diffie Hellman with Curve25519
         Receives the public value and chooses a secret value such that it is able
         to compute the shared session key ( * In this application, the output of DHKE is used
         with the salt as input for the HKDF).
+        :param forward_secure:
         :param peer_public_value as bytes
         :return:
         """
@@ -46,27 +47,27 @@ class dhke:
         shared_key = private_key.do_exchange(PublicKey(peer_public_value))
 
         # 3. Apply the kdf
-        info = dhke.generate_info()
+        info = dhke.generate_info(forward_secure)
         salt = bytes.fromhex("5ac349e90091b5556f1a3c52eb57f92c12640e876e26ab2601c02b2a32f54830") # Fixed client nonce
         # salt += bytes.fromhex(SessionInstance.get_instance().server_nonce) # Appended with dynamic server nonce
         salt += bytes.fromhex("e4d458e2594b930f6d4f77711215adf9ebe99096c479dbf765f41d28646c4b87a0ec735e63cc4f19b9207d369e36968b2b2071ed") # Is it fixed?
 
-        print(">>>> My Salt <<<<")
-        print(salt.hex())
+        # print(">>>> My Salt <<<<")
+        # print(salt.hex())
+        #
+        # print(">>>> Shared Key <<<<")
+        # print(shared_key.hex())
+        #
+        # print(">>>> Info <<<<")
+        # print(info.hex())
 
-        print(">>>> Shared Key <<<<")
-        print(shared_key.hex())
-
-        print(">>>> Info <<<<")
-        print(info.hex())
-
-        derived_shared_key = dhke.perform_hkdf(salt, shared_key, info)
+        derived_shared_key = dhke.perform_hkdf(salt, shared_key, info, forward_secure)
 
         SessionInstance.get_instance().keys = derived_shared_key
         return derived_shared_key
 
     @staticmethod
-    def perform_hkdf(salt, shared_key, info):
+    def perform_hkdf(salt, shared_key, info, forward_secure=False):
         derived_key = HKDF(
             algorithm=hashes.SHA256(),
             length=40,  # 2 * keyLen (=16) + 2 * 4
@@ -85,7 +86,6 @@ class dhke:
 
         print(keys)
 
-        forward_secure = False
         # if it is not forward secure we need to diversify the keys
         if not forward_secure:
             diversified = dhke.diversify(keys['key2'], keys['iv2'], SessionInstance.get_instance().div_nonce)

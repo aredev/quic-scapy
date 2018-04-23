@@ -1,3 +1,6 @@
+from Processors.ProcessedFramesInstance import ProcessedFramesInstance
+
+
 class Processor:
     """
     Abstract class for the processors
@@ -10,6 +13,10 @@ class Processor:
 
     packet_body = None
     reader = 0
+    processor = None
+
+    def set_processor(self, processor):
+        self.processor = processor
 
     def receive(self, packet_body):
         """
@@ -41,3 +48,10 @@ class Processor:
         :return:
         """
         return self.packet_body[self.reader:]
+
+    def store_processed_bytes(self):
+        """
+        Stores the processed bytes to the instance class
+        :return:
+        """
+        self.processor.append_bytes(bytes.fromhex("".join(self.packet_body[0:self.reader])))

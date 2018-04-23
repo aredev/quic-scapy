@@ -6,6 +6,7 @@ from Processors.ConnectionCloseProcessor import ConnectionCloseProcessor
 from Processors.GoAwayProcessor import GoAwayProcessor
 from Processors.PaddingProcessor import PaddingProcessor
 from Processors.PingProcessor import PingProcessor
+from Processors.ProcessedFramesInstance import ProcessedFramesInstance
 from Processors.RSTStreamProcessor import RSTStreamProcessor
 from Processors.StopWaitingProcessor import StopWaitingProcessor
 from Processors.StreamProcessor import StreamProcessor
@@ -19,6 +20,7 @@ class FramesProcessor:
     """
 
     packet_body = None
+    processedFramesInstance = None
 
     def __init__(self, packet_body) -> None:
         super().__init__()
@@ -26,9 +28,13 @@ class FramesProcessor:
 
     def process(self):
 
-        print(self.packet_body)
+        # print(self.packet_body)
 
         processors = [
+            {
+                'processor': StreamProcessor(),
+                'processes': 0
+            },
             {
                 'processor': AckProcessor(),
                 'processes': 0
@@ -66,10 +72,6 @@ class FramesProcessor:
                 'processes': 0
             },
             {
-                'processor': StreamProcessor(),
-                'processes': 0
-            },
-            {
                 'processor': WindowUpdateProcessor(),
                 'processes': 0
             },
@@ -79,13 +81,18 @@ class FramesProcessor:
             }
         ]
 
+        self.processedFramesInstance = ProcessedFramesInstance.get_instance()
+        self.processedFramesInstance.reset_processed_bytes()
+
         while len(self.packet_body) > 0:
             # As long as we need to process the packet body
             for processor in processors:
                 processor['processor'].receive(self.packet_body)
+                processor['processor'].set_processor(self.processedFramesInstance)
                 if processor['processor'].my_frame():
                     print("Processed by {}".format(processor))
                     processor['processor'].process()
+                    processor['processor'].store_processed_bytes()
                     self.packet_body = processor['processor'].result()
                     processor['processes'] += 1
                     break

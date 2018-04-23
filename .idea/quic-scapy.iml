@@ -6,7 +6,6 @@
       <sourceFolder url="file://$MODULE_DIR$/crypto/curve25519-donna-1.3" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crypto/curve25519-donna-1.3/python-src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crypto/curve25519-donna-1.3/curve25519" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/connection" isTestSource="false" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.6" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
