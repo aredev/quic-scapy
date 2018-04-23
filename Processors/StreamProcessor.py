@@ -2,6 +2,7 @@ import json
 
 from Processors.ProcessedFramesInstance import ProcessedFramesInstance
 from Processors.Processor import Processor
+from Processors.SHLOPacketProcessor import SHLOPacketProcessor
 from connection.ConnectionInstance import ConnectionInstance, ConnectionEndpoint
 from util.SessionInstance import SessionInstance
 from util.processor_hex_number_to_int import processor_hex_to_int
@@ -66,8 +67,7 @@ class StreamProcessor(Processor):
         response = ConnectionInstance.get_instance().send_message(ConnectionEndpoint.CRYPTO_ORACLE, json.dumps(request_data).encode('utf-8'), True)
         if response['status'] == 'success':
             shlo_packet = response['data']
-            print(response)
-            print("Todo process the packet")
+            SHLOPacketProcessor(shlo_packet).parse()
 
     def result(self):
         """
