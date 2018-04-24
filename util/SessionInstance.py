@@ -15,6 +15,7 @@ class SessionInstance:
     message_authentication_hash = ""
     associated_data = ""
     packet_number = ""
+    largest_observed_packet_number = -1
 
     @staticmethod
     def get_instance():

@@ -8,6 +8,7 @@ from scapy.sendrecv import sr1, send, sr, sniff, srp
 from scapy.supersocket import L3RawSocket
 from scapy.utils import hexdump
 
+from ACKNotificationPacket import AckNotificationPacket
 from ACKPacket import ACKPacket
 from AEADPacket import AEADPacket
 from AEADRequestPacket import AEADRequestPacket
@@ -16,6 +17,7 @@ from QUIC import QUICHeader
 from RejectionPacket import RejectionPacket
 from SecondACKPacket import SecondACKPacket
 from FramesProcessor import StreamProcessor, FramesProcessor
+from ThirdACKPacket import ThirdACKPacket
 from VersionNegotiation import VersionNegotiationPacket
 from VersionProposalPacket import VersionProposalPacket
 from connection.ConnectionInstance import ConnectionInstance, ConnectionEndpoint
@@ -89,6 +91,40 @@ def send_second_ack():
 send_second_ack()
 
 
+def send_ack_for_encrypted_message():
+    ack = AckNotificationPacket()
+    conf.L3socket = L3RawSocket
+
+    next_packet_number_int = int(SessionInstance.get_instance().packet_number) + 1
+    SessionInstance.get_instance().packet_number = next_packet_number_int
+    next_packet_number_byte = int(next_packet_number_int).to_bytes(8, byteorder='little')
+    next_packet_number_nonce = int(next_packet_number_int).to_bytes(2, byteorder='big')
+
+    ack.setfieldval("Packet Number", next_packet_number_int)
+
+    ack_body = "40" + str(format(SessionInstance.get_instance().largest_observed_packet_number)).zfill(2) + "006a0100"
+    keys = SessionInstance.get_instance().keys
+
+    request = {
+        'mode': 'encryption',
+        'input': ack_body,
+        'key': keys['key1'].hex(),  # For encryption, we use my key
+        'additionalData': "18d75487b7da970f81" + next_packet_number_byte.hex()[:4], # Fixed public flags 18 || fixed connection Id || packet number
+        'nonce': keys['iv1'].hex() + next_packet_number_nonce.hex().ljust(16, '0')
+    }
+
+    print("Ack request for encryption {}".format(request))
+
+    ciphertext = ConnectionInstance.get_instance().send_message(ConnectionEndpoint.CRYPTO_ORACLE, json.dumps(request).encode('utf-8'), True)
+    ciphertext = ciphertext['data']
+    print("Ciphertext in ack {}".format(ciphertext))
+
+    ack.setfieldval("Message Authentication Hash", string_to_ascii(ciphertext[:24]))
+
+    p = IP(dst=destination_ip) / UDP(dport=6121, sport=61250) / ack / Raw(load=string_to_ascii(ciphertext[24:]))
+    ans, _ = sr(p)
+
+
 def send_version_proposal():
     version_proposal = VersionProposalPacket()
     conf.L3socket = L3RawSocket
@@ -136,7 +172,10 @@ def send_full_chlo():
             SessionInstance.get_instance().message_authentication_hash = value
         if "Packet" in key:
             SessionInstance.get_instance().packet_number = value
+            SessionInstance.get_instance().largest_observed_packet_number = value
             packet_number = value
+
+    # send_third_ack()
 
     dhke.generate_keys(SessionInstance.get_instance().peer_public_value)
 
@@ -148,6 +187,8 @@ def send_full_chlo():
     # print("Processing packet {}".format(extract_from_packet(a)))
     processor = FramesProcessor(extract_from_packet(a, start=54))
     processor.process()
+
+    dhke.generate_keys(SessionInstance.get_instance().peer_public_value, True)
 
 
 send_full_chlo()
@@ -165,13 +206,16 @@ def send_encrypted_request():
     next_packet_number_int = int(SessionInstance.get_instance().packet_number)+1
     SessionInstance.get_instance().packet_number = next_packet_number_int
     next_packet_number_byte = int(next_packet_number_int).to_bytes(8, byteorder='little')
+    next_packet_number_nonce = int(next_packet_number_int).to_bytes(2, byteorder='big')
+
+    print("Next packet number will be {}".format(next_packet_number_nonce.hex()))
 
     request = {
         'mode': 'encryption',
         'input': get_request,
         'key': keys['key1'].hex(),     # For encryption, we use my key
-        'additionalData': "18FDF278D7E28726ED0005",  # Fixed public flags 18 || fixed connection Id
-        'nonce': keys['iv1'].hex() + next_packet_number_byte.hex()
+        'additionalData': "18d75487b7da970f81" + next_packet_number_byte.hex()[:4],  # Fixed public flags 18 || fixed connection Id || packet number
+        'nonce': keys['iv1'].hex() + next_packet_number_nonce.hex().ljust(16, '0')
     }
 
     print(request)
@@ -185,9 +229,25 @@ def send_encrypted_request():
     a.setfieldval('Packet Number', next_packet_number_int)
     a.setfieldval("Message Authentication Hash", string_to_ascii(ciphertext[0:24]))
 
-    p = IP(dst=destination_ip) / UDP(dport=6121, sport=61250) / a / Raw(load=string_to_ascii(ciphertext[12:]))
+    p = IP(dst=destination_ip) / UDP(dport=6121, sport=61250) / a / Raw(load=string_to_ascii(ciphertext[24:]))
     ans, _ = sr(p)
-    print(ans)
+    a = AEADRequestPacket(ans[0][1][1].payload.load)
+
+    send_ack_for_encrypted_message()
+
+
+    # handle this.
+
+    # print(a)
+    # No div nonce, so only flags || CID || packetnumber
+    # SessionInstance.get_instance().associated_data = extract_from_packet_as_bytestring(a, end=10)St
+    # SessionInstance.get_instance().packet_number = extract_from_packet_as_bytestring(a, start=9, end=10)
+    # print(SessionInstance.get_instance().packet_number)
+    #
+    # # Process the streams
+    # # print("Processing packet {}".format(extract_from_packet(a)))
+    # processor = FramesProcessor(extract_from_packet(a, start=22))
+    # processor.process()
 
 
 send_encrypted_request()

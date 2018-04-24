@@ -58,7 +58,7 @@ class ConnectionInstance:
         self.learner_connection.close()
 
     def send_message(self, endpoint, msg: bytes, expect_answer=False):
-        #Todo: remove singleton, just make it a static method.
+        # Todo: remove singleton, just make it a static method.
         if endpoint == ConnectionEndpoint.CRYPTO_ORACLE:
             print("Sending message ...")
             self.crypto_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

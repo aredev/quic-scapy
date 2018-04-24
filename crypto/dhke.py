@@ -49,8 +49,10 @@ class dhke:
         # 3. Apply the kdf
         info = dhke.generate_info(forward_secure)
         salt = bytes.fromhex("5ac349e90091b5556f1a3c52eb57f92c12640e876e26ab2601c02b2a32f54830") # Fixed client nonce
-        # salt += bytes.fromhex(SessionInstance.get_instance().server_nonce) # Appended with dynamic server nonce
-        salt += bytes.fromhex("e4d458e2594b930f6d4f77711215adf9ebe99096c479dbf765f41d28646c4b87a0ec735e63cc4f19b9207d369e36968b2b2071ed") # Is it fixed?
+        if not forward_secure:
+            salt += bytes.fromhex("e4d458e2594b930f6d4f77711215adf9ebe99096c479dbf765f41d28646c4b87a0ec735e63cc4f19b9207d369e36968b2b2071ed") # Is it fixed?
+        else:
+            salt += bytes.fromhex(SessionInstance.get_instance().server_nonce)  # Appended with dynamic server nonce
 
         # print(">>>> My Salt <<<<")
         # print(salt.hex())
@@ -84,7 +86,11 @@ class dhke:
             'iv2': derived_key[32+4:]   # other iv
         }
 
-        print(keys)
+        print("Key1 {} ".format(keys['key1'].hex()))
+        print("Key2 {} ".format(keys['key2'].hex()))
+        print("iv1 {} ".format(keys['iv1'].hex()))
+        print("iv2 {} ".format(keys['iv2'].hex()))
+
 
         # if it is not forward secure we need to diversify the keys
         if not forward_secure:
