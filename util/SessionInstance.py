@@ -16,6 +16,7 @@ class SessionInstance:
     associated_data = ""
     packet_number = ""
     largest_observed_packet_number = -1
+    shlo_received = False
 
     @staticmethod
     def get_instance():

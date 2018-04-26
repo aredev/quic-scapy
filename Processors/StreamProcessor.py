@@ -31,43 +31,12 @@ class StreamProcessor(Processor):
         Assumption, the stream frame is last. FIXME
         :return:
         """
-        ciphertext = self.packet_body[self.reader:]
-        self.reader += len(ciphertext)
-
-        print(len(ciphertext))
-
-        # Nonce is iv[0:4] || packetnumber as long (8 bytes)
-
-        # associated data, again is from the public bytes until (inclusive) packet number. 0:42
-        associated_data = SessionInstance.get_instance().associated_data
-        packet_number_byte = SessionInstance.get_instance().packet_number
-        packet_number = int(packet_number_byte).to_bytes(8, byteorder='little')
-        nonce = SessionInstance.get_instance().keys['iv2'][0:4] + packet_number
-
-        # The ciphertext starts from the Message Authentication Hash and continues until the end of this stream
-        # Containing everything it meets along the way.
-        message_authentication_hash = SessionInstance.get_instance().message_authentication_hash
-        ciphertext = "".join(ciphertext)
-        complete_ciphertext = message_authentication_hash
-        complete_ciphertext += self.processor.get_processed_bytes()
-        complete_ciphertext += bytes.fromhex(ciphertext)
-
-        print("ProcessedFrames thus far {}".format(self.processor.get_processed_bytes()))
-
-        request_data = {
-            'mode': 'decryption',
-            'input': complete_ciphertext.hex(),
-            'additionalData': associated_data,
-            'nonce': nonce.hex(),
-            'key': SessionInstance.get_instance().keys['key2'].hex()    # other key, used for decryption,.
-        }
-
-        print(request_data)
-
-        response = ConnectionInstance.get_instance().send_message(ConnectionEndpoint.CRYPTO_ORACLE, json.dumps(request_data).encode('utf-8'), True)
-        if response['status'] == 'success':
-            shlo_packet = response['data']
-            SHLOPacketProcessor(shlo_packet).parse()
+        if not SessionInstance.get_instance().shlo_received:
+            print("Processing SHLO")
+            SHLOPacketProcessor(self.packet_body).parse()
+            SessionInstance.get_instance().shlo_received = True
+        else:
+            print("Perform other post processing on this packet {}".format(self.packet_body))
 
     def result(self):
         """

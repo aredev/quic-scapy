@@ -1,0 +1,82 @@
+from enum import Enum
+
+
+class AEADPacketDynamic:
+    """
+    Custom holder for this packet
+    """
+    packet_body = None
+    reader = 0
+    fields = {}
+    packet_number_lengths = {'0x0': 1, '0x1': 2, '0x2': 4, '0x3': 6}
+    packet_number_length = -1
+    is_public_reset = False
+    div_nonce_present = False
+    conn_id_present = False
+
+    def __init__(self, packet: bytes) -> None:
+        self.packet_body = packet
+
+    def read_byte(self, n=1):
+        data = self.packet_body[self.reader:self.reader+n]
+        self.reader += n
+        return data
+
+    def get_field(self, name):
+        for n, value in self.fields.items():
+            if n == name:
+                return value
+        return "NOT FOUND"
+
+    def get_packet(self):
+        return self.packet_body
+
+    def parse(self):
+        self.check_flags()
+        self.parse_header()
+
+        self.fields.update({
+            AEADFieldNames.ENCRYPTED_FRAMES: self.packet_body[self.reader:].hex()
+        })
+
+    def check_flags(self):
+        """
+        Convert first byte to
+        :return:
+        """
+        public_flags = self.read_byte()
+        public_flags_as_bits = bin(int(public_flags.hex(), 16))[2:].zfill(8)
+        self.is_public_reset = public_flags_as_bits[6] == '1'
+        self.div_nonce_present = public_flags_as_bits[5] == '1'
+        self.conn_id_present = public_flags_as_bits[4] == '1'
+
+        public_flag_bits = public_flags_as_bits[2:4]
+        public_flag_bytes = hex(int(public_flag_bits, 2))
+        self.packet_number_length = self.packet_number_lengths[public_flag_bytes]
+
+    def parse_header(self):
+        if self.conn_id_present:
+            self.fields.update({
+                AEADFieldNames.CID: self.read_byte(8).hex()
+            })
+
+        if self.div_nonce_present:
+            self.fields.update({
+                AEADFieldNames.DIVERSIFICATION_NONCE: self.read_byte(32).hex()
+            })
+
+        self.fields.update({
+            AEADFieldNames.PACKET_NUMBER: self.read_byte(self.packet_number_length).hex()
+        })
+
+        self.fields.update({
+            AEADFieldNames.MESSAGE_AUTHENTICATION_HASH: self.read_byte(12).hex()
+        })
+
+
+class AEADFieldNames(Enum):
+    CID = "CID"
+    PACKET_NUMBER = "Packet Number"
+    MESSAGE_AUTHENTICATION_HASH = "Message Authentication Hash"
+    ENCRYPTED_FRAMES = "Encrypted Frames"
+    DIVERSIFICATION_NONCE = "Diversification Nonce"

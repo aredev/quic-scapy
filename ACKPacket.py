@@ -1,6 +1,7 @@
 from scapy.packet import Packet
 from scapy.fields import *
 
+from XStrFixedLenField import XStrFixedLenField
 from util.string_to_ascii import string_to_ascii
 
 
