@@ -55,14 +55,14 @@ class dhke:
         else:
             salt += bytes.fromhex("e4d458e2594b930f6d4f77711215adf9ebe99096c479dbf765f41d28646c4b87a0ec735e63cc4f19b9207d369e36968b2b2071ed") # Is it fixed?
 
-        print(">>>> My Salt <<<<")
-        print(salt.hex())
-
-        print(">>>> Shared Key <<<<")
-        print(shared_key.hex())
-
-        print(">>>> Info <<<<")
-        print(info.hex())
+        # print(">>>> My Salt <<<<")
+        # print(salt.hex())
+        #
+        # print(">>>> Shared Key <<<<")
+        # print(shared_key.hex())
+        #
+        # print(">>>> Info <<<<")
+        # print(info.hex())
 
         derived_shared_key = dhke.perform_hkdf(salt, shared_key, info, forward_secure)
 

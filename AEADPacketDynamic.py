@@ -31,6 +31,19 @@ class AEADPacketDynamic:
     def get_packet(self):
         return self.packet_body
 
+    def get_associated_data(self):
+        result = self.get_field(AEADFieldNames.PUBLIC_FLAGS)
+        if self.conn_id_present:
+            result += self.get_field(AEADFieldNames.CID)
+
+        if self.div_nonce_present:
+            result += self.get_field(AEADFieldNames.DIVERSIFICATION_NONCE)
+
+        result += self.get_field(AEADFieldNames.PACKET_NUMBER)
+        result += self.get_field(AEADFieldNames.MESSAGE_AUTHENTICATION_HASH)
+
+        return result
+
     def parse(self):
         self.check_flags()
         self.parse_header()
@@ -45,6 +58,10 @@ class AEADPacketDynamic:
         :return:
         """
         public_flags = self.read_byte()
+        self.fields.update({
+            AEADFieldNames.PUBLIC_FLAGS: public_flags.hex()
+        })
+
         public_flags_as_bits = bin(int(public_flags.hex(), 16))[2:].zfill(8)
         self.is_public_reset = public_flags_as_bits[6] == '1'
         self.div_nonce_present = public_flags_as_bits[5] == '1'
@@ -75,6 +92,7 @@ class AEADPacketDynamic:
 
 
 class AEADFieldNames(Enum):
+    PUBLIC_FLAGS = "Public Flags"
     CID = "CID"
     PACKET_NUMBER = "Packet Number"
     MESSAGE_AUTHENTICATION_HASH = "Message Authentication Hash"

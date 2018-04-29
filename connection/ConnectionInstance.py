@@ -4,6 +4,8 @@ import socket
 import threading
 from enum import Enum
 
+from util.SessionInstance import SessionInstance
+
 
 class ConnectionInstance:
     """
@@ -36,10 +38,10 @@ class ConnectionInstance:
 
             # _thread.start_new_thread(self.handle_learner, (self, ))
 
-    def handle_learner(self, useless):
+    def handle_learner(self):
         # set up socket for the Learner
         self.learner_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.learner_socket.bind(("192.168.1.70", 4242))
+        self.learner_socket.bind((SessionInstance.get_instance().destination_ip, 4242))
         print("Server active ... Listening on port 4242")
         self.learner_socket.listen()
         self.learner_connection, address = self.learner_socket.accept()
@@ -62,7 +64,7 @@ class ConnectionInstance:
         if endpoint == ConnectionEndpoint.CRYPTO_ORACLE:
             print("Sending message ...")
             self.crypto_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.crypto_socket.connect(("192.168.1.70", 3030))
+            self.crypto_socket.connect((SessionInstance.get_instance().destination_ip, 3030))
             self.crypto_socket.send(msg)
             if expect_answer:
                 # Arbitrary big sized buffer

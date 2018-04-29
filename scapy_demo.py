@@ -15,6 +15,7 @@ from AEADPacket import AEADPacket
 from AEADPacketDynamic import AEADPacketDynamic, AEADFieldNames
 from AEADRequestPacket import AEADRequestPacket
 from FullCHLOPacket import FullCHLOPacket
+from PacketNumberInstance import PacketNumberInstance
 from PingPacket import PingPacket
 from QUIC import QUICHeader
 from RejectionPacket import RejectionPacket
@@ -33,9 +34,6 @@ from util.packet_to_hex import extract_from_packet, extract_from_packet_as_bytes
 from util.split_at_every_n import split_at_nth_char
 from util.string_to_ascii import string_to_ascii
 
-destination_ip = "192.168.1.70"     # Home connectiopns
-# destination_ip = "192.168.43.228"   # hotspot connections
-
 # header lenght: 22 bytes
 
 
@@ -47,7 +45,8 @@ def send_chlo():
     # Store chlo for the key derivation
     SessionInstance.get_instance().chlo = extract_from_packet_as_bytestring(chlo)
 
-    p = IP(dst=destination_ip) / UDP(dport=6121, sport=61250) / chlo
+    chlo.setfieldval("Packet Number", PacketNumberInstance.get_instance().get_next_packet_number())
+    p = IP(dst=SessionInstance.get_instance().destination_ip) / UDP(dport=6121, sport=61250) / chlo
     ans, _ = sr(p)
     a = RejectionPacket(ans[0][1][1].payload.load)
 
@@ -77,15 +76,9 @@ def send_first_ack():
     chlo = ACKPacket()
     conf.L3socket = L3RawSocket
 
-    # associated_data = extract_from_packet(chlo, end=15)
-    # print("associated data first ack {}".format(associated_data))
-    # body = extract_from_packet(chlo, start=27)
-    # print("body first ack {}".format(body))
+    chlo.setfieldval("Packet Number", PacketNumberInstance.get_instance().get_next_packet_number())
 
-    # message_authentication_hash = FNV128A().generate_hash(associated_data, body)
-    # chlo.setfieldval('Message Authentication Hash', string_to_ascii(message_authentication_hash))
-
-    p = IP(dst=destination_ip) / UDP(dport=6121, sport=61250) / chlo
+    p = IP(dst=SessionInstance.get_instance().destination_ip) / UDP(dport=6121, sport=61250) / chlo
     send(p)
 
 
@@ -96,13 +89,9 @@ def send_second_ack():
     chlo = SecondACKPacket()
     conf.L3socket = L3RawSocket
 
-    # associated_data = extract_from_packet(chlo, end=15)
-    # body = extract_from_packet(chlo, start=27)
+    chlo.setfieldval("Packet Number", PacketNumberInstance.get_instance().get_next_packet_number())
 
-    # message_authentication_hash = FNV128A().generate_hash(associated_data, body)
-    # chlo.setfieldval('Message Authentication Hash', string_to_ascii(message_authentication_hash))
-
-    p = IP(dst=destination_ip) / UDP(dport=6121, sport=61250) / chlo
+    p = IP(dst=SessionInstance.get_instance().destination_ip) / UDP(dport=6121, sport=61250) / chlo
     send(p)
 
 
@@ -113,13 +102,22 @@ def send_ack_for_encrypted_message():
     ack = AckNotificationPacket()
     conf.L3socket = L3RawSocket
 
-    next_packet_number_int = SessionInstance.get_instance().packet_number + 1
+    next_packet_number_int = PacketNumberInstance.get_instance().get_next_packet_number()
     next_packet_number_byte = int(next_packet_number_int).to_bytes(8, byteorder='little')
     next_packet_number_nonce = int(next_packet_number_int).to_bytes(2, byteorder='big')
 
     ack.setfieldval("Packet Number", next_packet_number_int)
+    highest_received_packet_number = format(PacketNumberInstance.get_instance().get_highest_received_packet_number(), 'x')
 
-    ack_body = "40" + str(format(SessionInstance.get_instance().largest_observed_packet_number)).zfill(2) + "02580100"
+    ack_body = "40"
+    ack_body += str(highest_received_packet_number).zfill(2)
+    ack_body += "0062"
+    ack_body += str(highest_received_packet_number).zfill(2)
+    ack_body += "00"
+    if SessionInstance.get_instance().nr_ack_send == 0:
+        ack_body += str(highest_received_packet_number).zfill(2)
+        ack_body += "00"
+        ack_body += "01"
     keys = SessionInstance.get_instance().keys
 
     request = {
@@ -137,8 +135,9 @@ def send_ack_for_encrypted_message():
     print("Ciphertext in ack {}".format(ciphertext))
 
     ack.setfieldval("Message Authentication Hash", string_to_ascii(ciphertext[:24]))
+    SessionInstance.get_instance().nr_ack_send += 1
 
-    p = IP(dst=destination_ip) / UDP(dport=6121, sport=61250) / ack / Raw(load=string_to_ascii(ciphertext[24:]))
+    p = IP(dst=SessionInstance.get_instance().destination_ip) / UDP(dport=6121, sport=61250) / ack / Raw(load=string_to_ascii(ciphertext[24:]))
     send(p)
 
 
@@ -147,17 +146,20 @@ def handle_received_encrypted_packet(packet):
     a.parse()
     print(">>>>>>>> Received packet with MAH: {}".format(a.get_field(AEADFieldNames.MESSAGE_AUTHENTICATION_HASH)))
 
-    # Start key derivation
+    # Start key derixvation
     SessionInstance.get_instance().div_nonce = a.get_field(AEADFieldNames.DIVERSIFICATION_NONCE)
     SessionInstance.get_instance().message_authentication_hash = a.get_field(AEADFieldNames.MESSAGE_AUTHENTICATION_HASH)
     packet_number = a.get_field(AEADFieldNames.PACKET_NUMBER)
     SessionInstance.get_instance().packet_number = packet_number
     SessionInstance.get_instance().largest_observed_packet_number = packet_number
 
+    print(">>>><<<!!!! Updating highest received packet number to {}".format(int(packet_number, 16)))
+    PacketNumberInstance.get_instance().update_highest_received_packet_number(int(packet_number, 16))
+
     dhke.generate_keys(SessionInstance.get_instance().peer_public_value, SessionInstance.get_instance().shlo_received)
 
-    SessionInstance.get_instance().associated_data = extract_from_packet_as_bytestring(a.get_packet(), end=42)
-    SessionInstance.get_instance().packet_number = int(extract_from_packet_as_bytestring(a.get_packet(), start=41, end=42), 16)
+    SessionInstance.get_instance().associated_data = a.get_associated_data()
+    SessionInstance.get_instance().packet_number = packet_number
 
     # Process the streams
     processor = FramesProcessor(split_at_nth_char(a.get_field(AEADFieldNames.ENCRYPTED_FRAMES)))
@@ -167,14 +169,14 @@ def handle_received_encrypted_packet(packet):
 def send_ping():
     print("Sending ping message...")
     ping = PingPacket()
-    packet_number = SessionInstance.get_instance().packet_number
+    packet_number = PacketNumberInstance.get_instance().get_next_packet_number()
     ciphertext = CryptoManager.encrypt(bytes.fromhex("07"), packet_number)
 
     ping.setfieldval('Packet Number', packet_number)
     ping.setfieldval("Message Authentication Hash", string_to_ascii(ciphertext[:24]))
 
     conf.L3socket = L3RawSocket
-    p = IP(dst=destination_ip) / UDP(dport=6121, sport=61250) / ping / Raw(load=string_to_ascii(ciphertext[24:]))
+    p = IP(dst=SessionInstance.get_instance().destination_ip) / UDP(dport=6121, sport=61250) / ping / Raw(load=string_to_ascii(ciphertext[24:]))
     # Maybe we cannot assume that is just a version negotiation packet?
     send(p)
 
@@ -187,6 +189,7 @@ def send_full_chlo():
     # Lets just create the public key for DHKE
     dhke.set_up_my_keys()
 
+    chlo.setfieldval("Packet Number", PacketNumberInstance.get_instance().get_next_packet_number())
     chlo.setfieldval('PUBS_Value', string_to_ascii(SessionInstance.get_instance().public_values_bytes))
 
     associated_data = extract_from_packet(chlo, end=15)
@@ -200,7 +203,7 @@ def send_full_chlo():
 
     # _thread.start_new_thread(start_sniff_thread, ())
 
-    p = IP(dst=destination_ip) / UDP(dport=6121, sport=61250) / chlo
+    p = IP(dst=SessionInstance.get_instance().destination_ip) / UDP(dport=6121, sport=61250) / chlo
     # Maybe we cannot assume that is just a version negotiation packet?
     send(p)
     sniff(prn=handle_received_encrypted_packet, filter="udp", store=0, count=2)
@@ -218,7 +221,7 @@ def send_encrypted_request():
     """
     print("Sending GET Request")
     get_request = "800300002501250000000500000000FF418FF1E3C2E5F23A6BA0AB9EC9AE38110782848750839BD9AB7A85ED6988B4C7"
-    packet_number = SessionInstance.get_instance().packet_number
+    packet_number = PacketNumberInstance.get_instance().get_next_packet_number()
     ciphertext = CryptoManager.encrypt(bytes.fromhex(get_request), packet_number)
 
     # Send it to the server
@@ -227,9 +230,10 @@ def send_encrypted_request():
     a.setfieldval('Packet Number', packet_number)
     a.setfieldval("Message Authentication Hash", string_to_ascii(ciphertext[0:24]))
 
-    p = IP(dst=destination_ip) / UDP(dport=6121, sport=61250) / a / Raw(load=string_to_ascii(ciphertext[24:]))
+    p = IP(dst=SessionInstance.get_instance().destination_ip) / UDP(dport=6121, sport=61250) / a / Raw(load=string_to_ascii(ciphertext[24:]))
     send(p)
-    # sniff(prn=handle_received_encrypted_packet, filter="udp", store=0, count=2)
+    sniff(prn=handle_received_encrypted_packet, filter="udp", store=0, count=2)
+    send_ack_for_encrypted_message()
     # # a = AEADRequestPacket(ans[0][1][1].payload.load)
     # print("Handle GET Response")
     # sniff(prn=handle_received_encrypted_packet, filter="udp", store=0, count=2)
@@ -251,5 +255,10 @@ def send_encrypted_request():
 
 
 send_encrypted_request()
+send_ack_for_encrypted_message()
+send_encrypted_request()
+send_ack_for_encrypted_message()
+send_encrypted_request()
+send_ack_for_encrypted_message()
 
 # handle_received_encrypted_packet(None)

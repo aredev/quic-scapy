@@ -38,7 +38,7 @@ class FramesProcessor:
 
         # Response is encrypted so we need to decrypt it
         associated_data = SessionInstance.get_instance().associated_data
-        packet_number = SessionInstance.get_instance().packet_number.to_bytes(8, byteorder='little')
+        packet_number = int(SessionInstance.get_instance().packet_number, 16).to_bytes(8, byteorder='little')
         nonce = SessionInstance.get_instance().keys['iv2'][0:4] + packet_number
 
         # The ciphertext starts from the Message Authentication Hash and continues until the end of this stream

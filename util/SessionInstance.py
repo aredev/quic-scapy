@@ -17,6 +17,9 @@ class SessionInstance:
     packet_number = ""
     largest_observed_packet_number = -1
     shlo_received = False
+    nr_ack_send = 0
+    destination_ip = "192.168.1.70"  # Home connectiopns
+    # destination_ip = "192.168.43.228"   # hotspot connections
 
     @staticmethod
     def get_instance():
