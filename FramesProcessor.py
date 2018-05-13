@@ -31,7 +31,7 @@ class FramesProcessor:
         super().__init__()
         self.packet_body = packet_body
 
-    def process(self):
+    def process(self, get_request_listener=None):
 
         self.processedFramesInstance = ProcessedFramesInstance.get_instance()
         self.processedFramesInstance.reset_processed_bytes()

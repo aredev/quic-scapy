@@ -2,7 +2,6 @@
 <module type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
-      <sourceFolder url="file://$MODULE_DIR$/packets" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crypto/curve25519-donna-1.3" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crypto/curve25519-donna-1.3/python-src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crypto/curve25519-donna-1.3/curve25519" isTestSource="false" />

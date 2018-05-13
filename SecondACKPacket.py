@@ -8,7 +8,7 @@ class SecondACKPacket(Packet):
     name = "ACKPacket 2"
     fields_desc = [
         XByteField("Public Flags", 0x19),
-        XLongField("CID", int("d75487b7da970f81", 16)),
+        StrFixedLenField("CID", string_to_ascii(""), 8),
         PacketField("Version", "Q039", "Q039"),
         LEShortField("Packet Number", 768),
 

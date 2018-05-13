@@ -55,6 +55,9 @@ class dhke:
         else:
             salt += bytes.fromhex("e4d458e2594b930f6d4f77711215adf9ebe99096c479dbf765f41d28646c4b87a0ec735e63cc4f19b9207d369e36968b2b2071ed") # Is it fixed?
 
+        # print("Connection ID")
+        # print(SessionInstance.get_instance().connection_id)
+        #
         # print(">>>> My Salt <<<<")
         # print(salt.hex())
         #
@@ -133,8 +136,11 @@ class dhke:
         else:
             info += "QUIC key expansion".encode('utf-8')
         info += b"\x00"
-        conn_id = 9299818721181127895
-        info += conn_id.to_bytes(8, byteorder='little')
+        try:
+            info += bytes.fromhex(SessionInstance.get_instance().connection_id)
+        except ValueError:
+            print("Error in connection id? {}".format(SessionInstance.get_instance().connection_id))
+            return
 
         info += bytes.fromhex(SessionInstance.get_instance().chlo)
 

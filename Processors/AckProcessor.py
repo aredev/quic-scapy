@@ -26,7 +26,7 @@ class AckProcessor(Processor):
         largest_ack_sizes = [1, 2, 4, 6]    # in bytes
         self.largest_ack_size = largest_ack_sizes[int(self.first_byte_as_bits[4:6], 2)] # convert to largest ack size
 
-        self.num_blocks_present = self.first_byte_as_bits[2] == "1"
+        # self.num_blocks_present = self.first_byte_as_bits[2] == "1"
 
         first_ack_block_lengths = [1, 2, 4, 6]
         self.first_ack_block_length = first_ack_block_lengths[int(self.first_byte_as_bits[6:8], 2)]
@@ -49,6 +49,8 @@ class AckProcessor(Processor):
         self.first_ack = self.packet_body[self.reader:self.reader+self.first_ack_block_length]
         self.reader += self.first_ack_block_length
 
+        print(self.num_blocks_present)
+        print(self.num_blocks)
         if self.num_blocks_present:
             self.gap_to_next_block = self.packet_body[self.reader]
 

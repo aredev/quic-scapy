@@ -9,7 +9,7 @@ class PingPacket(Packet):
 
     fields_desc = [
         XByteField("Public Flags", 0x18),
-        XLongField("CID", int("d75487b7da970f81", 16)),
+        StrFixedLenField("CID", string_to_ascii(""), 8),
         LEShortField("Packet Number", 768),
 
         # Message authentication hash

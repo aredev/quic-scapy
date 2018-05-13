@@ -1,5 +1,6 @@
 class SessionInstance:
     __instance = None
+    connection_id = -1
     server_config_id = ""
     source_address_token = ""
     public_value = None # object
@@ -18,6 +19,7 @@ class SessionInstance:
     largest_observed_packet_number = -1
     shlo_received = False
     nr_ack_send = 0
+    connection_id_as_number = -1
     destination_ip = "192.168.1.70"  # Home connectiopns
     # destination_ip = "192.168.43.228"   # hotspot connections
 

@@ -13,7 +13,7 @@ class QUICHeader(Packet):
     name = "QUIC"
     fields_desc = [
         XByteField("Public Flags", 0x19),
-        XLongField("CID", int("d75487b7da970f81", 16)),
+        StrFixedLenField("CID", string_to_ascii(""), 8),
         PacketField("Version", "Q039", "Q039"),
         LEShortField("Packet Number", 256),
         # Message Authentication Hash, 12 bytes

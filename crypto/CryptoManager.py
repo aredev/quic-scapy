@@ -22,11 +22,13 @@ class CryptoManager:
 
         print("Next packet number will be {}".format(next_packet_number_nonce.hex()))
 
+        print(SessionInstance.get_instance().connection_id)
+
         request = {
             'mode': 'encryption',
             'input': msg.hex(),
             'key': keys['key1'].hex(),  # For encryption, we use my key
-            'additionalData': "18d75487b7da970f81" + next_packet_number_byte.hex()[:4],  # Fixed public flags 18 || fixed connection Id || packet number
+            'additionalData': "18" + SessionInstance.get_instance().connection_id + next_packet_number_byte.hex()[:4],  # Fixed public flags 18 || connection Id || packet number
             'nonce': keys['iv1'].hex() + next_packet_number_nonce.hex().ljust(16, '0')
         }
 

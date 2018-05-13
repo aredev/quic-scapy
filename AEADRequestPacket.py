@@ -14,7 +14,7 @@ class AEADRequestPacket(Packet):
 
     fields_desc = [
         XByteField("Public Flags", 0x0),
-        XLongField("CID", int("d75487b7da970f81", 16)),
+        StrFixedLenField("CID", string_to_ascii(""), 8),
         LEShortField("Packet Number", 0),
         XStrFixedLenField("Message Authentication Hash", string_to_ascii(""), 12),
     ]
