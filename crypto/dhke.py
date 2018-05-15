@@ -6,6 +6,7 @@ from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from donna25519 import PrivateKey, PublicKey
 
+from caching.SessionModel import SessionModel
 from util.SessionInstance import SessionInstance
 
 

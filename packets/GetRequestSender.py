@@ -26,6 +26,7 @@ class GetRequestSender:
 
     __sniffer = None
     __received_packets = 0
+    __finished = False
 
     def __init__(self, sniffer) -> None:
         self.__sniffer = sniffer
@@ -56,6 +57,7 @@ class GetRequestSender:
         processor = FramesProcessor(split_at_nth_char(a.get_field(AEADFieldNames.ENCRYPTED_FRAMES)))
         processor.process(self)
 
+        print("GETTER received packets {}".format(self.__received_packets))
         if self.__received_packets < 3:
             self.__received_packets += 1
         else:
@@ -77,6 +79,10 @@ class GetRequestSender:
         p = IP(dst=SessionInstance.get_instance().destination_ip) / UDP(dport=6121, sport=61250) / a / Raw(load=string_to_ascii(ciphertext[24:]))
         self.__sniffer.add_observer(self)
         send(p)
+        print("Done sending...")
+
+    def is_finished(self):
+        return self.__finished
 
     def send_ack(self):
         ack = AckNotificationPacket()
@@ -126,3 +132,5 @@ class GetRequestSender:
         p = IP(dst=SessionInstance.get_instance().destination_ip) / UDP(dport=6121, sport=61250) / ack / Raw(
             load=string_to_ascii(ciphertext[24:]))
         send(p)
+        print("After sending ack...")
+        self.__finished = True

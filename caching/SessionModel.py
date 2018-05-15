@@ -1,4 +1,4 @@
-from peewee import Model, SqliteDatabase, TextField
+from peewee import Model, SqliteDatabase, TextField, AutoField
 
 db = SqliteDatabase('quic_scapy.db')
 
@@ -9,7 +9,9 @@ class BaseModel(Model):
 
 
 class SessionModel(BaseModel):
+    id = AutoField()
     source_address_token = TextField()
     server_nonce = TextField()
     server_config_id = TextField()
     public_value = TextField()
+    connection_id = TextField()
