@@ -309,6 +309,7 @@ def send_full_chlo_to_existing_connection():
     previous_session = SessionModel.get(SessionModel.id == 1)
     print("Server config Id {}".format(previous_session.server_config_id))
 
+    # The order is important!
     tags = [
         {
             'name': 'PAD',
