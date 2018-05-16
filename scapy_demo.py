@@ -212,6 +212,7 @@ def handle_received_encrypted_packet(packet):
     print(">>>><<<!!!! Updating highest received packet number to {}".format(int(packet_number, 16)))
     PacketNumberInstance.get_instance().update_highest_received_packet_number(int(packet_number, 16))
 
+    print("Received peer public value {}".format(SessionInstance.get_instance().peer_public_value))
     dhke.generate_keys(SessionInstance.get_instance().peer_public_value, SessionInstance.get_instance().shlo_received)
 
     SessionInstance.get_instance().associated_data = a.get_associated_data()
@@ -389,9 +390,12 @@ def send_full_chlo_to_existing_connection():
     PacketNumberInstance.get_instance().reset()
 
     conn_id = random.getrandbits(64)
+    SessionInstance.get_instance().server_nonce = previous_session.server_nonce
     SessionInstance.get_instance().connection_id_as_number = conn_id
     SessionInstance.get_instance().connection_id = str(format(conn_id, 'x'))
-    SessionInstance.get_instance().peer_public_value = previous_session.public_value
+    SessionInstance.get_instance().peer_public_value = bytes.fromhex(previous_session.public_value)
+    SessionInstance.get_instance().shlo_received = False
+    SessionInstance.get_instance().zero_rtt = True
     #
     a = FullCHLOPacketNoPadding()
     a.setfieldval('Packet Number', PacketNumberInstance.get_instance().get_next_packet_number())
@@ -406,7 +410,8 @@ def send_full_chlo_to_existing_connection():
 
     conf.L3socket = L3RawSocket
     SessionInstance.get_instance().chlo = extract_from_packet_as_bytestring(a, start=27)   # CHLO from the CHLO tag, which starts at offset 26 (22 header + frame type + stream id + offset)
-    #
+    SessionInstance.get_instance().chlo += body[4:]
+
     # dhke.generate_keys(bytes.fromhex(previous_session.public_value), False)
     # ciphertext = CryptoManager.encrypt(bytes.fromhex(SessionInstance.get_instance().chlo), 1)
     #
@@ -416,9 +421,9 @@ def send_full_chlo_to_existing_connection():
     #
     p = IP(dst=SessionInstance.get_instance().destination_ip) / UDP(dport=6121, sport=61250) / a / Raw(load=string_to_ascii(body))
     # # Maybe we cannot assume that is just a version negotiation packet?
-    send(p)
-    # handle_received_encrypted_packet(ans)
-    # send_ack_for_encrypted_message()
+    ans, _ = sr(p)
+    handle_received_encrypted_packet(ans)
+    send_ack_for_encrypted_message()
 
 
 def send_encrypted_request():
@@ -443,56 +448,15 @@ def stop_sniffer():
     sniffer.stop_sniffing()
 
 
-def send_full_chlo_to_existing_connection_unencrypted():
-    """
-    Is it sent encrypted?
-    :return:
-    """
-    PacketNumberInstance.get_instance().reset()
-    previous_session = SessionModel.get(SessionModel.id == 1)
-
-    conn_id = random.getrandbits(64)
-    SessionInstance.get_instance().connection_id_as_number = conn_id
-    SessionInstance.get_instance().connection_id = str(format(conn_id, 'x'))
-    SessionInstance.get_instance().peer_public_value = bytes.fromhex(previous_session.public_value)
-
-    a = FullCHLOPacket()
-    # a.setfieldval('Packet Number', 1)
-    a.setfieldval('CID', string_to_ascii(SessionInstance.get_instance().connection_id))
-
-    a.setfieldval('SCID_Value', string_to_ascii(previous_session.server_config_id))
-    # a.setfieldval('STK_Value', string_to_ascii(previous_session.source_address_token))
-    # chlo.setfieldval('Version_Value', 959656017)   #Q039 as int
-
-    # Lets just create the public key for DHKE
-    dhke.set_up_my_keys()
-
-    a.setfieldval("Packet Number", PacketNumberInstance.get_instance().get_next_packet_number())
-    a.setfieldval('PUBS_Value', string_to_ascii("96D49F2CE98F31F053DCB6DFE729669385E5FD99D5AA36615E1A9AD57C1B090C"))
-
-    associated_data = extract_from_packet(a, end=15)
-    body = extract_from_packet(a, start=27)
-
-    message_authentication_hash = FNV128A().generate_hash(associated_data, body)
-
-    conf.L3socket = L3RawSocket
-    SessionInstance.get_instance().chlo = extract_from_packet_as_bytestring(a, start=31)  # CHLO from the CHLO tag, which starts at offset 26 (22 header + frame type + stream id + offset)
-
-    # dhke.generate_keys(bytes.fromhex(previous_session.public_value), False)
-    # ciphertext = CryptoManager.encrypt(bytes.fromhex(SessionInstance.get_instance().chlo), 1)
-
-    a.setfieldval('Message Authentication Hash', string_to_ascii(message_authentication_hash))
-
-    print("Send full CHLO from existing connection unencrypted")
-
-    p = IP(dst=SessionInstance.get_instance().destination_ip) / UDP(dport=6121, sport=61250) / a
-    # Maybe we cannot assume that is just a version negotiation packet?
-    send(p)
-    # handle_received_encrypted_packet(ans)
-    # send_ack_for_encrypted_message()
-
+send_full_chlo_to_existing_connection()
+send_encrypted_request()
+close_connection()
 
 send_full_chlo_to_existing_connection()
+send_encrypted_request()
+close_connection()
+stop_sniffer()
+
 # send_chlo()
 # send_encrypted_request()
 
