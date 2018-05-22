@@ -11,7 +11,6 @@ class GoogleFNV128Hash:
     """
 
     def __init__(self) -> None:
-        print("Resetting sum?")
         self.sum = {
             'v0': 0x6295C58D,
             'v1': 0x62B82175,
@@ -46,7 +45,6 @@ class GoogleFNV128Hash:
             log_file = open(filename, "a")
 
         # Resetting the values?
-        print(self.sum)
 
         for byte in data:
             if logging:
@@ -114,5 +112,5 @@ class GoogleFNV128Hash:
                 log_file.write("SUM: {} \n".format(self.sum))
                 log_file.write("**** FINISHED CALCULATION WITH BYTE {} \n \n \n".format(byte))
 
-        print(self.sum)
+        # print(self.sum)
         return len(data)

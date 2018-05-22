@@ -38,7 +38,7 @@ class PacketNumberInstance:
         return use_big_end_int
 
     def update_highest_received_packet_number(self, new_highest: int):
-        if new_highest > self.highest_received_packet_number:
+        if new_highest > int(self.highest_received_packet_number):
             self.highest_received_packet_number = new_highest
 
     def get_highest_received_packet_number(self):

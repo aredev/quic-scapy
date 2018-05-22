@@ -20,8 +20,8 @@ class SessionInstance:
     shlo_received = False
     nr_ack_send = 0
     connection_id_as_number = -1
-    # destination_ip = "192.168.1.70"  # Home connectiopns
-    destination_ip = "192.168.43.228"   # hotspot connections
+    destination_ip = "192.168.1.70"  # Home connectiopns
+    # destination_ip = "192.168.43.228"   # hotspot connections
     zero_rtt = False
 
     @staticmethod

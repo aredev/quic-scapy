@@ -14,7 +14,7 @@ from Processors.StopWaitingProcessor import StopWaitingProcessor
 from Processors.StreamProcessor import StreamProcessor
 from Processors.UnknownProcessor import UnknownProcessor
 from Processors.WindowsUpdateProcessor import WindowUpdateProcessor
-from connection.ConnectionInstance import ConnectionInstance, ConnectionEndpoint
+from connection.ConnectionInstance import ConnectionEndpoint, CryptoConnectionManager
 from util.SessionInstance import SessionInstance
 from util.split_at_every_n import split_at_nth_char
 
@@ -61,7 +61,7 @@ class FramesProcessor:
 
         print(request_data)
 
-        response = ConnectionInstance.get_instance().send_message(ConnectionEndpoint.CRYPTO_ORACLE,
+        response = CryptoConnectionManager.send_message(ConnectionEndpoint.CRYPTO_ORACLE,
                                                                   json.dumps(request_data).encode('utf-8'), True)
 
         print("Response after decryption {}".format(response['data']))

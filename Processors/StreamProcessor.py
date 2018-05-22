@@ -3,7 +3,6 @@ import json
 from Processors.ProcessedFramesInstance import ProcessedFramesInstance
 from Processors.Processor import Processor
 from Processors.SHLOPacketProcessor import SHLOPacketProcessor
-from connection.ConnectionInstance import ConnectionInstance, ConnectionEndpoint
 from util.SessionInstance import SessionInstance
 from util.processor_hex_number_to_int import processor_hex_to_int
 
@@ -32,7 +31,7 @@ class StreamProcessor(Processor):
         :return:
         """
         if not SessionInstance.get_instance().shlo_received:
-            print("Processing SHLO")
+            print("Processing SHLO {}")
             SHLOPacketProcessor(self.packet_body).parse()
             SessionInstance.get_instance().shlo_received = True
         else:

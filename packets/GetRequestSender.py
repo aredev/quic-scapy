@@ -11,7 +11,7 @@ from AEADPacketDynamic import AEADPacketDynamic, AEADFieldNames
 from AEADRequestPacket import AEADRequestPacket
 from FramesProcessor import FramesProcessor
 from PacketNumberInstance import PacketNumberInstance
-from connection.ConnectionInstance import ConnectionEndpoint, ConnectionInstance
+from connection.ConnectionInstance import ConnectionEndpoint, CryptoConnectionManager
 from crypto.CryptoManager import CryptoManager
 from crypto.dhke import dhke
 from util.SessionInstance import SessionInstance
@@ -24,12 +24,12 @@ class GetRequestSender:
     Sends GET Requests
     """
 
-    __sniffer = None
+    __instance = None
     __received_packets = 0
     __finished = False
 
-    def __init__(self, sniffer) -> None:
-        self.__sniffer = sniffer
+    def __init__(self, instance) -> None:
+        self.__instance = instance
 
     def packet_update(self, packet):
         print("Received update from the Sniffer thread")
@@ -45,8 +45,8 @@ class GetRequestSender:
         SessionInstance.get_instance().packet_number = packet_number
         SessionInstance.get_instance().largest_observed_packet_number = packet_number
 
-        print(">>>><<<!!!! Updating highest received packet number to {}".format(int(packet_number, 16)))
-        PacketNumberInstance.get_instance().update_highest_received_packet_number(int(packet_number, 16))
+        # print(">>>><<<!!!! Updating highest received packet number to {}".format(int(packet_number, 16)))
+        # PacketNumberInstance.get_instance().update_highest_received_packet_number(int(packet_number, 16))
 
         dhke.generate_keys(SessionInstance.get_instance().peer_public_value,
                            SessionInstance.get_instance().shlo_received)
@@ -67,7 +67,7 @@ class GetRequestSender:
     def make_get_request(self):
         get_request = "800300002501250000000500000000FF418FF1E3C2E5F23A6BA0AB9EC9AE38110782848750839BD9AB7A85ED6988B4C7"
         packet_number = PacketNumberInstance.get_instance().get_next_packet_number()
-        ciphertext = CryptoManager.encrypt(bytes.fromhex(get_request), packet_number)
+        ciphertext = CryptoManager.encrypt(bytes.fromhex(get_request), packet_number, self.__instance)
 
         # Send it to the server
         a = AEADRequestPacket()
@@ -77,7 +77,7 @@ class GetRequestSender:
         a.setfieldval("Message Authentication Hash", string_to_ascii(ciphertext[0:24]))
 
         p = IP(dst=SessionInstance.get_instance().destination_ip) / UDP(dport=6121, sport=61250) / a / Raw(load=string_to_ascii(ciphertext[24:]))
-        self.__sniffer.add_observer(self)
+        # self.__sniffer.add_observer(self)
         send(p)
         print("Done sending...")
 
@@ -96,7 +96,7 @@ class GetRequestSender:
 
         ack.setfieldval("Packet Number", next_packet_number_int)
         highest_received_packet_number = format(
-            PacketNumberInstance.get_instance().get_highest_received_packet_number(), 'x')
+            int(PacketNumberInstance.get_instance().get_highest_received_packet_number(), 16), 'x')
 
         ack_body = "40"
         ack_body += str(highest_received_packet_number).zfill(2)
@@ -121,7 +121,7 @@ class GetRequestSender:
 
         print("Ack request for encryption {}".format(request))
 
-        ciphertext = ConnectionInstance.get_instance().send_message(ConnectionEndpoint.CRYPTO_ORACLE,
+        ciphertext = CryptoConnectionManager.send_message(ConnectionEndpoint.CRYPTO_ORACLE,
                                                                     json.dumps(request).encode('utf-8'), True)
         ciphertext = ciphertext['data']
         print("Ciphertext in ack {}".format(ciphertext))

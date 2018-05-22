@@ -16,8 +16,8 @@ class ACKPacket(Packet):
         # Message authentication hash
         StrFixedLenField("Message Authentication Hash", string_to_ascii(""), 12),
         XByteField("Frame Type", 0x40),
-        ByteField("Largest Acked", 1),
-        LEShortField("Largest Acked Delta Time", 17408),
-        ByteField("First Ack Block Length", 1),
+        XByteField("Largest Acked", 2),
+        LEShortField("Largest Acked Delta Time", 45362),
+        XByteField("First Ack Block Length", 2),
         ByteField("Num Timestamp", 0),
     ]

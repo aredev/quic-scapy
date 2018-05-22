@@ -21,7 +21,7 @@ class FNV128A:
         h.write("Client".encode("utf-8"), cast=False, logging=logging)
 
         big_endian_high, big_endian_low = h.sum128()
-        print("Low {} High {}".format(big_endian_low, big_endian_high))
+        # print("Low {} High {}".format(big_endian_low, big_endian_high))
 
         # The high part is casted to 32 bits
         big_endian_high &= 0xffffffff

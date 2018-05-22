@@ -15,6 +15,14 @@ class AEADPacketDynamic:
     conn_id_present = False
 
     def __init__(self, packet: bytes) -> None:
+        self.packet_body = None
+        self.reader = 0
+        self.fields = {}
+        self.packet_number_lengths = {'0x0': 1, '0x1': 2, '0x2': 4, '0x3': 6}
+        self.packet_number_length = -1
+        self.is_public_reset = False
+        self.div_nonce_present = False
+        self.conn_id_present = False
         self.packet_body = packet
 
     def read_byte(self, n=1):
@@ -27,6 +35,13 @@ class AEADPacketDynamic:
             if n == name:
                 return value
         return "NOT FOUND"
+
+    def has_field(self, name):
+        for n, value in self.fields.items():
+            if n == name:
+                return True
+
+        return False
 
     def get_packet(self):
         return self.packet_body
@@ -78,8 +93,9 @@ class AEADPacketDynamic:
             })
 
         if self.div_nonce_present:
+            div_nonce = self.read_byte(32).hex()
             self.fields.update({
-                AEADFieldNames.DIVERSIFICATION_NONCE: self.read_byte(32).hex()
+                AEADFieldNames.DIVERSIFICATION_NONCE: div_nonce
             })
 
         self.fields.update({
