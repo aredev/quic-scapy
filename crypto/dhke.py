@@ -28,7 +28,7 @@ class dhke:
         SessionInstance.get_instance().private_value = private_key
 
     @staticmethod
-    def generate_keys(peer_public_value: bytes, forward_secure=False):
+    def generate_keys(peer_public_value: bytes, forward_secure=False, logger=None):
         """
         Method that implements Diffie Hellman with Curve25519
         Receives the public value and chooses a secret value such that it is able
@@ -71,7 +71,11 @@ class dhke:
         # print(">>>> Info <<<<")
         # print(info.hex())
 
+        logger.info("Shared key {}".format(shared_key.hex()))
+
         derived_shared_key = dhke.perform_hkdf(salt, shared_key, info, forward_secure)
+
+        logger.info("Derived shared key {}".format({k: v.hex() for k, v in derived_shared_key.items()}))
 
         SessionInstance.get_instance().keys = derived_shared_key
         return derived_shared_key
@@ -93,17 +97,15 @@ class dhke:
             'iv1': derived_key[32:32+4],# my iv
             'iv2': derived_key[32+4:]   # other iv
         }
-        #
-        # print("Key1 {} ".format(keys['key1'].hex()))
-        # print("Key2 {} ".format(keys['key2'].hex()))
-        # print("iv1 {} ".format(keys['iv1'].hex()))
-        # print("iv2 {} ".format(keys['iv2'].hex()))
 
         # if it is not forward secure we need to diversify the keys
         if not forward_secure:
-            diversified = dhke.diversify(keys['key2'], keys['iv2'], bytes.fromhex(SessionInstance.get_instance().div_nonce))
-            keys['key2'] = diversified['diversified_key']
-            keys['iv2'] = diversified['diversified_iv']
+            try:
+                diversified = dhke.diversify(keys['key2'], keys['iv2'], bytes.fromhex(SessionInstance.get_instance().div_nonce))
+                keys['key2'] = diversified['diversified_key']
+                keys['iv2'] = diversified['diversified_iv']
+            except ValueError:
+                print("Error in div nonce {}".format(SessionInstance.get_instance().div_nonce))
 
         return keys
 

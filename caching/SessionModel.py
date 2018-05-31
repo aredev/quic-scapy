@@ -1,4 +1,6 @@
-from peewee import Model, SqliteDatabase, TextField, AutoField
+import datetime
+
+from peewee import Model, SqliteDatabase, TextField, AutoField, DateTimeField
 
 db = SqliteDatabase('quic_scapy.db')
 
@@ -15,3 +17,17 @@ class SessionModel(BaseModel):
     server_config_id = TextField()
     public_value = TextField()
     connection_id = TextField()
+
+
+class LearningRunModel(BaseModel):
+    id = AutoField()
+    run = TextField()
+    result = TextField(default="---")
+    created_at = DateTimeField(default=datetime.datetime.now())
+
+
+class NonDeterministicResponseModel(BaseModel):
+    id = AutoField()
+    run = TextField()
+    result = TextField(default="---")
+    created_at = DateTimeField(default=datetime.datetime.now())

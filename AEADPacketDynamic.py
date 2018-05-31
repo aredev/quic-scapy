@@ -55,7 +55,7 @@ class AEADPacketDynamic:
             result += self.get_field(AEADFieldNames.DIVERSIFICATION_NONCE)
 
         result += self.get_field(AEADFieldNames.PACKET_NUMBER)
-        result += self.get_field(AEADFieldNames.MESSAGE_AUTHENTICATION_HASH)
+        # result += self.get_field(AEADFieldNames.MESSAGE_AUTHENTICATION_HASH)
 
         return result
 

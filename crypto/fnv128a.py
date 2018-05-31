@@ -16,6 +16,7 @@ class FNV128A:
     def generate_hash(associated_data, body, logging=False):
         h = GoogleFNV128Hash()
 
+        logging = False
         h.write(associated_data, logging=logging)
         h.write(body, logging=logging)
         h.write("Client".encode("utf-8"), cast=False, logging=logging)

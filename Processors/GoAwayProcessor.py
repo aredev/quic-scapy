@@ -24,7 +24,8 @@ class GoAwayProcessor(Processor):
         self.reader += 2
 
         # convert the phrase length to an int
-        self.reason_phrase_length = processor_hex_to_int(self.reason_phrase_length)
+        if len(self.reason_phrase_length) > 0:
+            self.reason_phrase_length = processor_hex_to_int(self.reason_phrase_length)
 
-        self.reason_phrase = self.packet_body[self.reader:self.reader+self.reason_phrase_length]
-        self.reader += self.reason_phrase_length
+            self.reason_phrase = self.packet_body[self.reader:self.reader+self.reason_phrase_length]
+            self.reader += self.reason_phrase_length

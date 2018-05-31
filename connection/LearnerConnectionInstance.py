@@ -1,6 +1,8 @@
 import socket
+import time
 
-from events.Events import SendInitialCHLOEvent, SendGETRequestEvent, CloseConnectionEvent, SendFullCHLOEvent
+from events.Events import SendInitialCHLOEvent, SendGETRequestEvent, CloseConnectionEvent, SendFullCHLOEvent, \
+    ZeroRTTCHLOEvent, ResetEvent
 
 
 class LearnerConnectionInstance:
@@ -16,7 +18,8 @@ class LearnerConnectionInstance:
 
     def set_up_communication_server(self):
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        host = '192.168.43.40'
+        # host = '192.168.43.40'
+        host = '192.168.1.71'
         port = 4142
         ip = socket.gethostbyname(host)
         self.__socket.bind((host, port))
@@ -39,13 +42,20 @@ class LearnerConnectionInstance:
 
     def respond(self, response):
         print("Sending response {}".format(response))
-        self.__connection.send(response)
+        if response:
+            response += "\n"
+        else:
+            response = "EXP\n" #other streams
+        self.__connection.sendall(response.encode('utf-8'))
 
     def __parse_data(self, data):
         data = data.decode('UTF-8').rstrip()
         if data == "INIT-CHLO":
             print("Performing Inchoate CHLO")
             self.update(SendInitialCHLOEvent())
+        elif data == "RESET":
+            print("Performing RESET")
+            self.update(ResetEvent())
         elif data == "GET":
             print("Performing GET Request")
             self.update(SendGETRequestEvent())
@@ -55,12 +65,17 @@ class LearnerConnectionInstance:
         elif data == "FULL-CHLO":
             print("Performing Full CHLO")
             self.update(SendFullCHLOEvent())
+        elif data == "0RTT-CHLO":
+            print("Zero RTT CHLO")
+            self.update(ZeroRTTCHLOEvent())
         else:
             print("Unknown received command. {} ".format(data))
+            time.sleep(2)
+            self.respond("UNKNOWN")
 
     def add_observer(self, observer):
         self.__observers.append(observer)
 
     def update(self, event):
         for observer in self.__observers:
-            observer.update(event)
+            observer.send(event)

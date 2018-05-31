@@ -10,7 +10,7 @@ class ACKPacket(Packet):
     fields_desc = [
         XByteField("Public Flags", 0x19),
         StrFixedLenField("CID", string_to_ascii(""), 8),
-        PacketField("Version", "Q039", "Q039"),
+        StrFixedLenField("Version", "Q039", 4),
         LEShortField("Packet Number", 512),
 
         # Message authentication hash

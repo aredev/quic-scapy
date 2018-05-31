@@ -4,5 +4,7 @@ def processor_hex_to_int(number):
     :param number:
     :return: number
     """
-
-    return int("".join(number[::-1]), 16)
+    if number == "":
+        return 0
+    else:
+        return int("".join(number[::-1]), 16)

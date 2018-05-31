@@ -15,7 +15,7 @@ class FullCHLOPacket(Packet):
     fields_desc = [
         XByteField("Public Flags", 0x19),
         StrFixedLenField("CID", string_to_ascii(""), 8),
-        PacketField("Version", "Q039", "Q039"),
+        StrFixedLenField("Version", "Q039", 4),
         LEShortField("Packet Number", 1024),
 
         # Message authentication hash
@@ -24,66 +24,66 @@ class FullCHLOPacket(Packet):
         XByteField("Frame Type", 0x84),
         XByteField("StreamId", 1),
         LEShortField("Offset", 4100),
-        PacketField("Tag1", "CHLO", "CHLO"),
+        StrFixedLenField("Tag1", "CHLO", 4),
         LEShortField("Tag Number", 17),
         ShortField("Padding", 0),
 
         # List of tags
-        PacketField("PAD", "PAD", "PAD"),
+        StrFixedLenField("PAD", "PAD", 3),
         ByteField("Xtra_1", 0),
         LEIntField("tag_offset_end_1", 637),
 
-        PacketField("SNI", "SNI", "SNI"),
+        StrFixedLenField("SNI", "SNI", 3),
         ByteField("Xtra_2", 0),
         LEIntField("tag_offset_end_2", 652),
 
-        PacketField("STK", "STK", "STK"),
+        StrFixedLenField("STK", "STK", 3),
         ByteField("Xtra_3", 0),
         LEIntField("tag_offset_end_3", 708),
 
-        PacketField("SNO", "SNO", "SNO"),
+        StrFixedLenField("SNO", "SNO", 3),
         ByteField("Xtra_4", 0),
         LEIntField("tag_offset_end_4", 760),
 
-        PacketField("VER", "VER", "VER"),
+        StrFixedLenField("VER", "VER", 3),
         ByteField("Xtra_5", 0),
         LEIntField("tag_offset_end_5", 764),
 
-        PacketField("CCS", "CCS", "CCS"),
+        StrFixedLenField("CCS", "CCS", 3),
         ByteField("Xtra_6", 0),
         LEIntField("tag_offset_end_6", 780),
 
-        PacketField("NONC", "NONC", "NONC"),
+        StrFixedLenField("NONC", "NONC", 4),
         LEIntField("tag_offset_end_7", 812),
 
-        PacketField("AEAD", "AEAD", "AEAD"),
+        StrFixedLenField("AEAD", "AEAD", 4),
         LEIntField("tag_offset_end_8", 816),
 
-        PacketField("SCID", "SCID", "SCID"),
+        StrFixedLenField("SCID", "SCID", 4),
         LEIntField("tag_offset_end_9", 832),
 
-        PacketField("PDMD", "PDMD", "PDMD"),
+        StrFixedLenField("PDMD", "PDMD", 4),
         LEIntField("tag_offset_end_10", 836),
 
-        PacketField("ICSL", "ICSL", "ICSL"),
+        StrFixedLenField("ICSL", "ICSL", 4),
         LEIntField("tag_offset_end_11", 840),
 
-        PacketField("PUBS", "PUBS", "PUBS"),
+        StrFixedLenField("PUBS", "PUBS", 4),
         LEIntField("tag_offset_end_12", 872),
 
-        PacketField("MIDS", "MIDS", "MIDS"),
+        StrFixedLenField("MIDS", "MIDS", 4),
         LEIntField("tag_offset_end_13", 876),
 
-        PacketField("KEXS", "KEXS", "KEXS"),
+        StrFixedLenField("KEXS", "KEXS", 4),
         LEIntField("tag_offset_end_14", 880),
 
-        PacketField("XLCT", "XLCT", "XLCT"),
+        StrFixedLenField("XLCT", "XLCT", 4),
         LEIntField("tag_offset_end_15", 888),
 
-        PacketField("CFCW", "CFCW", "CFCW"),
+        StrFixedLenField("CFCW", "CFCW", 4),
         LEIntField("tag_offset_end_16", 892),
 
-        PacketField("SFCW", "SFCW", "SFCW"),
+        StrFixedLenField("SFCW", "SFCW", 4),
         LEIntField("tag_offset_end_17", 896),
 
         XByteField("Padding0", 0x00),
@@ -724,20 +724,20 @@ class FullCHLOPacket(Packet):
         XByteField("Padding635", 0x00),
         XByteField("Padding636", 0x00),
 
-        PacketField("Server Name Indication", "www.example.org", "www.example.org"),
+        StrFixedLenField("Server Name Indication", "www.example.org", 15),
         StrFixedLenField("STK_Value", string_to_ascii("f7214fe6649467547b2c4e006d97c716097d05ac737b34f426404fd965e2290677fecb437701364808ec4af796bacea645afd897525ef16f"), 56),
         StrFixedLenField("SNO_Value", string_to_ascii("e4d458e2594b930f6d4f77711215adf9ebe99096c479dbf765f41d28646c4b87a0ec735e63cc4f19b9207d369e36968b2b2071ed"), 52),
         LEIntField("Version_Value", 0),
         StrFixedLenField("CCS_Value", string_to_ascii("01e8816092921ae87eed8086a2158291"), 16),
         StrFixedLenField("NONC_Value", string_to_ascii("5ac349e90091b5556f1a3c52eb57f92c12640e876e26ab2601c02b2a32f54830"), 32),
-        PacketField("AEAD_Value", "AESG", "AESG"),
+        StrFixedLenField("AEAD_Value", "AESG", 4),
         # Set the server config id to the value received in the REJ packet.
         StrFixedLenField("SCID_Value", "", 16),
-        PacketField("PDMD_Value", "X509", "X509"),
+        StrFixedLenField("PDMD_Value", "X509", 4),
         LEIntField("ICSL_Value", 30),
         StrFixedLenField("PUBS_Value", string_to_ascii("1403c2f3138a820f8114f282c4837d585bd00782f4ec0e5f1d39c06c49cc8043"), 32),
         LEIntField("MIDS_Value", 100),
-        PacketField("KEXS_Value", "C255", "C255"),
+        StrFixedLenField("KEXS_Value", "C255", 4),
         StrFixedLenField("XLCT_Value", string_to_ascii("7accfb0fbd674011"), 8),
         LEIntField("CFCW_Value", 49152),
         LEIntField("SFCW_Value", 32768),

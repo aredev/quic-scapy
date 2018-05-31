@@ -60,10 +60,13 @@ class AckProcessor(Processor):
             # self.ack_block = self.packet_body[self.reader:self.reader+self.first_ack_block_length]
             # self.reader += self.first_ack_block_length
 
-        self.num_timestamps = self.packet_body[self.reader]
-        self.num_timestamps = int(self.num_timestamps, 16)
-        self.reader += 1
+        try:
+            self.num_timestamps = self.packet_body[self.reader]
+            self.num_timestamps = int(self.num_timestamps, 16)
+            self.reader += 1
 
-        self.reader += 1
-        self.reader += 4
-        self.reader += self.num_timestamps * 3
+            self.reader += 1
+            self.reader += 4
+            self.reader += self.num_timestamps * 3
+        except IndexError:
+            self.packet_body = []

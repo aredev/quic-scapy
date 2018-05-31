@@ -5,7 +5,7 @@ class PacketNumberInstance:
 
     __instance = None
     next_packet_number = 1  # This is represented as 00 01, 00 02, 00 03, ... and returned as int
-    highest_received_packet_number = -1
+    highest_received_packet_number = "01"
 
     @staticmethod
     def get_instance():
@@ -46,4 +46,4 @@ class PacketNumberInstance:
 
     def reset(self):
         self.next_packet_number = 1
-        self.highest_received_packet_number = -1
+        self.highest_received_packet_number = "01"

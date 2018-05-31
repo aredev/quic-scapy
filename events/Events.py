@@ -12,3 +12,11 @@ class SendGETRequestEvent:
 
 class CloseConnectionEvent:
     pass
+
+
+class ZeroRTTCHLOEvent:
+    pass
+
+
+class ResetEvent:
+    pass
