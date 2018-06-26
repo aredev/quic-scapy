@@ -57,18 +57,22 @@ class Sniffer(Thread):
             AEADFieldNames.MESSAGE_AUTHENTICATION_HASH)
         packet_number = a.get_field(AEADFieldNames.PACKET_NUMBER)
         SessionInstance.get_instance().packet_number = packet_number
-        print("Packet Number {}".format(packet_number))
+        # print("Packet Number {}".format(packet_number))
         SessionInstance.get_instance().largest_observed_packet_number = packet_number
         PacketNumberInstance.get_instance().highest_received_packet_number = packet_number
         SessionInstance.get_instance().associated_data = a.get_associated_data()
-        print("Associated Data {}".format(SessionInstance.get_instance().associated_data))
+        # print("Associated Data {}".format(SessionInstance.get_instance().associated_data))
         ciphertext = split_at_nth_char(a.get_field(AEADFieldNames.ENCRYPTED_FRAMES))
 
         print("Received peer public value {}".format(SessionInstance.get_instance().peer_public_value))
 
         # Only generate a new set of initial keys when we receive a new REJ
         current_app_key = SessionInstance.get_instance().app_keys
-        if current_app_key['type'] != "REJ" or current_app_key['mah'] != SessionInstance.get_instance().last_received_rej:
+        self.__logger.info("Currently stored app key {}".format(current_app_key))
+        self.__logger.info("Last received REJ")
+        if current_app_key['type'] != "REJ" \
+                or current_app_key['mah'] != SessionInstance.get_instance().last_received_rej\
+                or SessionInstance.get_instance().zero_rtt:
             # If the generated key does not comply with the previously received REJ, then create a new set of keys
             # Or if it is the first set of keys. Otherwise we just use the previous set of keys.
             key = dhke.generate_keys(SessionInstance.get_instance().peer_public_value,
@@ -83,14 +87,18 @@ class Sniffer(Thread):
         return processor.process(logger=self.__logger)
 
     def __handle_rej_packet(self, a):
+        self.__logger.info("Storing REJ information from packet {}".format(a.getfieldval('Message Authentication Hash')))
         for key, value in a.fields.items():
             if "Server_Config_ID" in key:
                 SessionInstance.get_instance().server_config_id = value
-                print("Server Config ID {}".format(value))
+                self.__logger.info("STORING: ServerConfigId {}".format(value))
             if "Source_Address_Token" in key:
                 SessionInstance.get_instance().source_address_token = value
+                self.__logger.info("STORING: SATKOK {}".format(value))
+
             if "Server_Nonce" in key:
                 SessionInstance.get_instance().server_nonce = value.hex()
+                self.__logger.info("STORING: SNONCE {}".format(value))
             if "Public_Value" in key:
                 # Has length 35, remove the first 4 bytes which only indicate the length of 32 bytes.
                 SessionInstance.get_instance().peer_public_value = bytes.fromhex(value[3:].hex())
@@ -106,9 +114,10 @@ class Sniffer(Thread):
                 connection_id=SessionInstance.get_instance().connection_id
             )
         )
+
         if SessionInstance.get_instance().scfg == "":
             SessionInstance.get_instance().scfg = extract_from_packet_as_bytestring(a, start=452, end=452+135)
-        print("Processing of REJ completed.")
+        # print("Processing of REJ completed.")
 
     def inform_observer(self, packet):
         parsed_packet = AEADPacketDynamic(packet[0][1][1].payload.load)
@@ -119,7 +128,7 @@ class Sniffer(Thread):
             self.__packet_instance.highest_received_packet_number = parsed_packet.get_field(AEADFieldNames.PACKET_NUMBER)
 
             # Catch the Public Reset packet, flags == 0x0e && TAG == PRST (50525354)
-            print("Parsed packet Public Flags {}".format(parsed_packet.get_field(AEADFieldNames.PUBLIC_FLAGS)))
+            # print("Parsed packet Public Flags {}".format(parsed_packet.get_field(AEADFieldNames.PUBLIC_FLAGS)))
             if parsed_packet.get_field(AEADFieldNames.PUBLIC_FLAGS) == "0e":
                 # check if the tag is equal to the PRST
                 tag = parsed_packet.packet_body[9:13]
@@ -135,7 +144,7 @@ class Sniffer(Thread):
                 result = self.__handle_encrypted_packet(parsed_packet)
                 self.__logger.info("Parsed as encrypted packet")
                 for observer in self.__observers:
-                    print("Result {}".format(result))
+                    # print("Result {}".format(result))
                     observer.update("", result)
             else:
                 # Add a check if it is really a REJ or just garbage
@@ -144,16 +153,17 @@ class Sniffer(Thread):
                     rej_packet = RejectionPacket(packet[0][1][1].payload.load)
                     rej_tag = rej_packet.getfieldval('Tag_1')
                     if rej_tag == b'REJ\x00':
-                        print("REJ Received")
+                        # print("REJ Received")
                         SessionInstance.get_instance().last_received_rej = parsed_packet.get_field(AEADFieldNames.MESSAGE_AUTHENTICATION_HASH)
                         self.__logger.info("Parsed as REJ packet")
+                        # if not SessionInstance.get_instance().currently_sending_zero_rtt:
                         self.__handle_rej_packet(rej_packet)
                         for observer in self.__observers:
                             observer.update("", "REJ")
                     else:
                         self.__logger.info("Parsed as Garbage")
                         threading.Thread(target=self.__send_unencrypted_ack, args=()).start()
-                        print("Garbage received, ack has been sent.")
+                        # print("Garbage received, ack has been sent.")
                 except Exception:
                     self.__logger.info("Parsed as closed. Not a REJ packet.")
                     # Considered as garbage.
@@ -170,7 +180,7 @@ class Sniffer(Thread):
         chlo.setfieldval('CID', string_to_ascii(SessionInstance.get_instance().connection_id))
         chlo.setfieldval("Packet Number", PacketNumberInstance.get_instance().get_next_packet_number())
 
-        print("First Ack Packet Number {}".format(int(str(PacketNumberInstance.get_instance().highest_received_packet_number), 16)))
+        # print("First Ack Packet Number {}".format(int(str(PacketNumberInstance.get_instance().highest_received_packet_number), 16)))
         chlo.setfieldval('Largest Acked', int(str(PacketNumberInstance.get_instance().highest_received_packet_number), 16))
         chlo.setfieldval('First Ack Block Length', int(str(PacketNumberInstance.get_instance().highest_received_packet_number), 16))
 
@@ -191,11 +201,11 @@ class Sniffer(Thread):
         next_packet_number_int = PacketNumberInstance.get_instance().get_next_packet_number()
         next_packet_number_byte = int(next_packet_number_int).to_bytes(8, byteorder='little')
         next_packet_number_nonce = int(next_packet_number_int).to_bytes(2, byteorder='big')
-        print("Sending encrypted ack for packet number {}".format(next_packet_number_int))
+        # print("Sending encrypted ack for packet number {}".format(next_packet_number_int))
 
         ack.setfieldval("Packet Number", next_packet_number_int)
         highest_received = PacketNumberInstance.get_instance().get_highest_received_packet_number()
-        print("Higheste {}".format(highest_received))
+        # print("Higheste {}".format(highest_received))
         highest_received_packet_number = format(int(highest_received, 16), 'x')
 
         ack_body = "40"
@@ -228,11 +238,11 @@ class Sniffer(Thread):
                 'nonce': "7a40a2e70600000000000000" # Just use a fixed, invalid nonce.
             }
 
-        print("Ack request for encryption {}".format(request))
+        # print("Ack request for encryption {}".format(request))
 
         ciphertext = CryptoConnectionManager.send_message(ConnectionEndpoint.CRYPTO_ORACLE, json.dumps(request).encode('utf-8'), True)
         ciphertext = ciphertext['data']
-        print("Ciphertext in ack {}".format(ciphertext))
+        # print("Ciphertext in ack {}".format(ciphertext))
 
         ack.setfieldval("Message Authentication Hash", string_to_ascii(ciphertext[:24]))
         SessionInstance.get_instance().nr_ack_send += 1
@@ -247,5 +257,5 @@ class Sniffer(Thread):
         self.__observers.remove(observer)
 
     def stop_sniffing(self):
-        print("Requested to stop sniffing")
+        # print("Requested to stop sniffing")
         self.__stop_sniffing = True

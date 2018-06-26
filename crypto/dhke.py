@@ -24,7 +24,7 @@ class dhke:
         # my_public_key = PublicKey(os.urandom(32))
         SessionInstance.get_instance().public_value = my_public_key
         SessionInstance.get_instance().public_values_bytes = my_public_key.public.hex()
-        print("My public key {}".format(SessionInstance.get_instance().public_values_bytes))
+        # print("My public key {}".format(SessionInstance.get_instance().public_values_bytes))
         SessionInstance.get_instance().private_value = private_key
 
     @staticmethod
@@ -50,12 +50,12 @@ class dhke:
         # 3. Apply the kdf
         info = dhke.generate_info(forward_secure)
         salt = bytes.fromhex("5ac349e90091b5556f1a3c52eb57f92c12640e876e26ab2601c02b2a32f54830") # Fixed client nonce
-        print("Forward secure? {}".format(forward_secure))
-        print("Zero rtt mode? {}".format(SessionInstance.get_instance().zero_rtt))
-        print("Using dynamic nonce? {}".format(SessionInstance.get_instance().zero_rtt or forward_secure))
+        # print("Forward secure? {}".format(forward_secure))
+        # print("Zero rtt mode? {}".format(SessionInstance.get_instance().zero_rtt))
+        # print("Using dynamic nonce? {}".format(SessionInstance.get_instance().zero_rtt or forward_secure))
         if forward_secure or SessionInstance.get_instance().zero_rtt:
             salt += bytes.fromhex(SessionInstance.get_instance().server_nonce)  # Appended with dynamic server nonce
-            print("Received server nonce {}".format(SessionInstance.get_instance().server_nonce))
+            # print("Received server nonce {}".format(SessionInstance.get_instance().server_nonce))
         else:
             salt += bytes.fromhex("e4d458e2594b930f6d4f77711215adf9ebe99096c479dbf765f41d28646c4b87a0ec735e63cc4f19b9207d369e36968b2b2071ed") # Is it fixed?
 
@@ -89,7 +89,7 @@ class dhke:
             info=info,
             backend=default_backend()
         ).derive(shared_key)
-        print("Derived shared key for AES: ")
+        # print("Derived shared key for AES: ")
 
         keys = {
             'key1': derived_key[:16],   # my key
@@ -130,7 +130,7 @@ class dhke:
     def print_like_go(info):
         info_as_string = "".join(map(chr, info))
         info_quic_style = [ord(c) for c in info_as_string]
-        print(info_quic_style)
+        # print(info_quic_style)
         return info_quic_style
 
     @staticmethod
@@ -161,26 +161,26 @@ class dhke:
         input = input.replace("[", "{")
         input = input.replace("]", "}")
         input = input.replace(" ", ", ")
-        print(input)
+        # print(input)
 
     @staticmethod
     def compare_infos(own_info, quic_info):
         # Transform quic string to array
         quic_info_as_array = quic_info.split(" ")
-        print(quic_info_as_array)
+        # print(quic_info_as_array)
 
-        print("Length of my info {}, Lenght of QUIC info {}".format(len(own_info), len(quic_info_as_array)))
-        print("Lengths are equal? {}".format(len(own_info) == len(quic_info_as_array)))
+        # print("Length of my info {}, Lenght of QUIC info {}".format(len(own_info), len(quic_info_as_array)))
+        # print("Lengths are equal? {}".format(len(own_info) == len(quic_info_as_array)))
 
         equal = True
         for own_idx, own_char in enumerate(own_info):
             for quic_idx, quic_char in enumerate(quic_info_as_array):
                 if own_idx == quic_idx:
                     if not str(own_char) == quic_char:
-                        print("At my array at place {} at I have {} but QUIC has {} at place {}".format(own_idx, own_char, quic_char, quic_idx))
+                        # print("At my array at place {} at I have {} but QUIC has {} at place {}".format(own_idx, own_char, quic_char, quic_idx))
                         equal = False
                         break
-        print(equal)
+        # print(equal)
 
     @staticmethod
     def quic_go_byte_array_print_to_python_array(input):
@@ -193,5 +193,5 @@ class dhke:
         input = input.replace("]", "")
         output = input.split(" ")
         output = ["%02x" % int(x) for x in output]
-        print("".join(output))
+        # print("".join(output))
         return output

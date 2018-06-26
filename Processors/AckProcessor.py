@@ -49,8 +49,8 @@ class AckProcessor(Processor):
         self.first_ack = self.packet_body[self.reader:self.reader+self.first_ack_block_length]
         self.reader += self.first_ack_block_length
 
-        print(self.num_blocks_present)
-        print(self.num_blocks)
+        # print(self.num_blocks_present)
+        # print(self.num_blocks)
         if self.num_blocks_present:
             self.gap_to_next_block = self.packet_body[self.reader]
 

@@ -10,7 +10,7 @@ class FNV128A:
     def print_like_go(info):
         info_as_string = "".join(map(chr, info))
         info_quic_style = [ord(c) for c in info_as_string]
-        print(info_quic_style)
+        # print(info_quic_style)
 
     @staticmethod
     def generate_hash(associated_data, body, logging=False):
@@ -40,7 +40,7 @@ class FNV128A:
         full_hash[:8] = little_endian_low_array
         full_hash[8:12] = little_endian_high_array[:4]
         message_authentication_hash = "".join(full_hash)
-        print(message_authentication_hash[:24])
+        # print(message_authentication_hash[:24])
         return message_authentication_hash[:24]
 
     @staticmethod
@@ -64,15 +64,15 @@ class FNV128A:
         h.write("Client".encode("utf-8"))
 
         big_endian_high, big_endian_low = h.sum128()
-        print("Low {} High {}".format(big_endian_low, big_endian_high))
-        print("High equal {}".format(big_endian_high == 3982203028265477082))
-        print("Low equal {}".format(big_endian_low == 1587784438202799035))
+        # print("Low {} High {}".format(big_endian_low, big_endian_high))
+        # print("High equal {}".format(big_endian_high == 3982203028265477082))
+        # print("Low equal {}".format(big_endian_low == 1587784438202799035))
 
         little_endian_low = struct.pack('<Q', big_endian_low)
         little_endian_high = struct.pack('<Q', big_endian_high)
 
         full_hash = little_endian_low + little_endian_high
-        print(binascii.hexlify(full_hash[:12]))
+        # print(binascii.hexlify(full_hash[:12]))
 
 # associated_data = "'19', '63', 'CD', '37', '66', 'FD', 'B7', 'C9', 'B8', '51', '30', '33', '39', '00', '02'".replace("\'", "").replace(",", "")
 # associated_data = associated_data.split(" ")

@@ -53,7 +53,7 @@ class FramesProcessor:
             complete_ciphertext += self.processedFramesInstance.get_processed_bytes().hex()
             complete_ciphertext += ciphertext
 
-            print("ProcessedFrames thus far {}".format(self.processedFramesInstance.get_processed_bytes()))
+            # print("ProcessedFrames thus far {}".format(self.processedFramesInstance.get_processed_bytes()))
 
             request_data = {
                 'mode': 'decryption',
@@ -68,7 +68,7 @@ class FramesProcessor:
             try:
                 response = CryptoConnectionManager.send_message(ConnectionEndpoint.CRYPTO_ORACLE,
                                                                       json.dumps(request_data).encode('utf-8'), True)
-                print("Response after decryption {}".format(response['data']))
+                # print("Response after decryption {}".format(response['data']))
                 logger.info("Decrypted {}".format(response['data']))
                 self.packet_body = split_at_nth_char(response['data'])
             except JSONDecodeError as err:
@@ -169,7 +169,7 @@ class FramesProcessor:
             processor.process()
             processed_by.append(processor.status)
 
-        print("Finished processing ? {} ".format(processed_by))
+        # print("Finished processing ? {} ".format(processed_by))
 
         # logger.info("After processing {}".format(processed_by))
         if len(processed_by) > 0:

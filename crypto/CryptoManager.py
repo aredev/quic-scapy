@@ -54,6 +54,6 @@ class CryptoManager:
             'nonce': "84d86f130800000000000000"
         }
 
-        print(CryptoConnectionManager.send_message(ConnectionEndpoint.CRYPTO_ORACLE, json.dumps(request).encode('utf-8'), True))
+        # print(CryptoConnectionManager.send_message(ConnectionEndpoint.CRYPTO_ORACLE, json.dumps(request).encode('utf-8'), True))
 
 # CryptoManager.debug()

@@ -9,7 +9,6 @@ from scapy import route # DO NOT REMOVE!!
 from scapy.config import conf
 from scapy.layers.inet import IP, UDP
 from scapy.layers.l2 import Raw
-from scapy.packet import fuzz
 from scapy.sendrecv import send, sr
 from scapy.supersocket import L3RawSocket
 from tqdm import tqdm
@@ -64,6 +63,7 @@ class Scapy:
     current_event = None
     run = ""
     ndc = None
+    first_time = True
     run_events = []
     previous_result = ""
 
@@ -76,7 +76,7 @@ class Scapy:
         self.sniffer = Sniffer()
         self.sniffer.start()
         self.sniffer.set_session_instance(PacketNumberInstance.get_instance(), self.logger)
-        self.ndc = NonDeterminismCatcher(self.logger)
+        # self.ndc = NonDeterminismCatcher(self.logger)
 
         dhke.set_up_my_keys()
         self.learner = RespondDummy()
@@ -91,6 +91,8 @@ class Scapy:
     def reset(self, reset_server, reset_run=True):
         # also reset the server
         if reset_server:
+            # remove the previous session
+            CacheInstance.get_instance().remove_session_model()
             filename = str(time.time())
             open('resets/{}'.format(filename), 'a')
             time.sleep(8)
@@ -113,16 +115,16 @@ class Scapy:
         self.logger.info("To {}".format(SessionInstance.get_instance().connection_id))
 
     def send_chlo(self, only_reset):
-        print("Only reset? {}".format(only_reset))
+        # print("Only reset? {}".format(only_reset))
         self.reset(only_reset)
 
         if only_reset:
             self.learner.respond("RESET")
             return
 
-        print(SessionInstance.get_instance().connection_id)
+        # print(SessionInstance.get_instance().connection_id)
 
-        print("Sending CHLO")
+        # print("Sending CHLO")
         chlo = QUICHeader()
         conf.L3socket = L3RawSocket
 
@@ -138,12 +140,10 @@ class Scapy:
         # Store chlo for the key derivation
         SessionInstance.get_instance().chlo = extract_from_packet_as_bytestring(chlo)
         self.sniffer.add_observer(self)
-        # chlo = fuzz(chlo)
-        # print(chlo.show())
+
         p = IP(dst=SessionInstance.get_instance().destination_ip) / UDP(dport=6121, sport=61250) / chlo
         send(p)
         self.wait_for_signal_or_expiration()
-
         self.processed = False
         self.sniffer.remove_observer(self)
 
@@ -151,19 +151,20 @@ class Scapy:
         # wait for a specific time otherwise
         start = time.time()
         expired = False
+        print(self.run_results)
         while not self.processed and not expired:
             if time.time() - start >= self.TIMEOUT:
                 expired = True
         if expired:
-            print("General expired")
-            if len(self.run_results) == 3:
+            # print("General expired")
+            if len(self.run_results) == 3 or True:
                 # Get the majority element
                 c = Counter(self.run_results)
                 value, count = c.most_common()[0]
                 self.learner.respond(value)
                 self.logger.info("General expired")
                 self.run += str(self.current_event)
-                self.ndc.add_run(self.run, value)
+                # self.ndc.add_run(self.run, value)
                 self.run_results = []
                 self.previous_result = value
                 # self.reset(True, False)    # Reset the server
@@ -175,9 +176,94 @@ class Scapy:
                 # if not isinstance(self.current_event, SendGETRequestEvent):
                 self.send(self.current_event, True)
         else:
-            print("General response {}".format(self.result))
-            if len(self.run_results) == 3:
+            # print("General response {}".format(self.result))
+            self.logger.info("Currently at run results {}".format(self.run_results))
+            self.logger.info("Current running event {}".format(self.current_event))
+            self.logger.info("Previous result {}".format(self.previous_result))
+            if isinstance(self.current_event, CloseConnectionEvent):
+                if self.previous_result == "EXP":
+                    self.learner.respond("closed")
+                    self.run_results = []
+                    return
+            if isinstance(self.current_event, SendGETRequestEvent):
+                # Does not need multiple times, as only the first time we get an HTTP response
+                if self.previous_result == "EXP":
+                    self.learner.respond("EXP")
+                    self.run_results = []
+                    return
+                elif self.result == "REJ":
+                    self.learner.respond("EXP")
+                    self.run_results = []
+                    self.result = ""
+                    return
+                elif self.previous_result == "shlo":
+                    self.learner.respond("http")
+                    self.previous_result = "http"
+                    self.result = ""
+                    self.run_results = []
+                    return
+                else:
+                    self.learner.respond(self.result)
+                    self.previous_result = self.result
+                    self.result = ""
+                    self.run_results = []
+                    return
+            if isinstance(self.current_event, SendInitialCHLOEvent):
+                # Does not really need to send multiple times
+                if self.previous_result == "":
+                    self.learner.respond("REJ")
+                    self.previous_result = "REJ"
+                    self.result = ""
+                    self.run_results = []
+                    return
+            if isinstance(self.current_event, SendFullCHLOEvent):
+                # If it is a full CHLO and we receive a SHLO. Do not send it again
+                if self.result == "http":
+                    self.learner.respond("EXP")
+                    self.result = ""
+                    self.run_results = []
+                    return
+
+                elif self.previous_result == "EXP":
+                    self.learner.respond("EXP")
+                    self.previous_result = "EXP"
+                    self.run_results = []
+                    return
+
+                elif self.previous_result == "shlo":
+                    self.learner.respond("EXP")
+                    self.previous_result = "EXP"
+                    self.run_results = []
+                    return
+
+                elif self.previous_result == "" or self.previous_result == "PRST":
+                    self.learner.respond("PRST")
+                    self.result = ""
+                    self.run_results = []
+                    return
+
+                if self.result == "shlo":
+                    self.learner.respond("shlo")
+                    self.run_results = []
+                    self.previous_result = "shlo"
+                    return
+
+            if isinstance(self.current_event, ZeroRTTCHLOEvent):
+                # We can only send this once, otherwise the second time it will automatically send it as a full message
+                SessionInstance.get_instance().currently_sending_zero_rtt = False
+                if self.result == "REJ" or self.result == "shlo":
+                    self.learner.respond(self.result)
+                    self.previous_result = self.result
+                    self.run_results = []
+                    return
+
+            if len(self.run_results) == 2 and isinstance(self.current_event, ZeroRTTCHLOEvent):
+                # We actually need it, otherwise a subsequent Full CHLO will not result in a SHLO.
+                SessionInstance.get_instance().currently_sending_zero_rtt = False
+            if len(self.run_results) == 3 or True:
                 # Get the majority element
+                if self.run_results.count("EXP") < 3:
+                    self.run_results = [x for x in self.run_results if 'EXP' != x]
                 c = Counter(self.run_results)
                 value, count = c.most_common()[0]
                 if isinstance(self.current_event, SendGETRequestEvent):
@@ -191,13 +277,27 @@ class Scapy:
                         else:
                             # remove all the REJs
                             value = list(filter(lambda a: a != 'REJ', self.run_results))[0]
-                    if (self.previous_result == "shlo" or self.previous_result == "http") and "http" not in self.run_results:
+                    if self.previous_result == "shlo" and "http" not in self.run_results:
                         value = "http"
 
+                if isinstance(self.current_event, ZeroRTTCHLOEvent):
+                    SessionInstance.get_instance().currently_sending_zero_rtt = False
+                    if value == "REJ":
+                        SessionInstance.get_instance().zero_rtt = False
+                    elif value == "shlo":
+                        SessionInstance.get_instance().zero_rtt = True
+
+                    if self.previous_result == "REJ" and value != "shlo":
+                        value = "shlo"
+                    elif self.previous_result == "shlo":
+                        value = "shlo"
+                    elif value == "EXP":
+                        value = "REJ"
+
                 self.learner.respond(value)
-                self.logger.info("General response {}".format(value))
-                self.run += str(self.current_event)
-                self.ndc.add_run(self.run, value)
+                self.logger.info("Responding to learner {}".format(value))
+                # self.run += str(self.current_event)
+                # self.ndc.add_run(self.run, value)
                 self.previous_result = value
                 self.run_results = []
                 # self.reset(True, False)
@@ -219,7 +319,7 @@ class Scapy:
         chlo.setfieldval('CID', string_to_ascii(SessionInstance.get_instance().connection_id))
         chlo.setfieldval("Packet Number", PacketNumberInstance.get_instance().get_next_packet_number())
 
-        print("First Ack Packet Number {}".format(int(str(PacketNumberInstance.get_instance().highest_received_packet_number), 16)))
+        # print("First Ack Packet Number {}".format(int(str(PacketNumberInstance.get_instance().highest_received_packet_number), 16)))
         chlo.setfieldval('Largest Acked', int(str(PacketNumberInstance.get_instance().highest_received_packet_number), 16))
         chlo.setfieldval('First Ack Block Length', int(str(PacketNumberInstance.get_instance().highest_received_packet_number), 16))
 
@@ -229,13 +329,13 @@ class Scapy:
         associated_data = extract_from_packet(chlo, end=15)
         body = extract_from_packet(chlo, start=27)
 
-        print("Associated data {}".format(associated_data))
-        print("Body {}".format(body))
+        # print("Associated data {}".format(associated_data))
+        # print("Body {}".format(body))
 
         message_authentication_hash = FNV128A().generate_hash(associated_data, body, True)
         chlo.setfieldval('Message Authentication Hash', string_to_ascii(message_authentication_hash))
 
-        print("Sending first ACK...")
+        # print("Sending first ACK...")
 
         p = IP(dst=SessionInstance.get_instance().destination_ip) / UDP(dport=6121, sport=61250) / chlo
         send(p)
@@ -265,7 +365,7 @@ class Scapy:
         next_packet_number_int = PacketNumberInstance.get_instance().get_next_packet_number()
         next_packet_number_byte = int(next_packet_number_int).to_bytes(8, byteorder='little')
         next_packet_number_nonce = int(next_packet_number_int).to_bytes(2, byteorder='big')
-        print("Sending encrypted ack for packet number {}".format(next_packet_number_int))
+        # print("Sending encrypted ack for packet number {}".format(next_packet_number_int))
 
         ack.setfieldval("Packet Number", next_packet_number_int)
         highest_received_packet_number = format(int(PacketNumberInstance.get_instance().get_highest_received_packet_number(), 16), 'x')
@@ -287,11 +387,11 @@ class Scapy:
             'nonce': keys['iv1'].hex() + next_packet_number_nonce.hex().ljust(16, '0')
         }
 
-        print("Ack request for encryption {}".format(request))
+        # print("Ack request for encryption {}".format(request))
 
         ciphertext = CryptoConnectionManager.send_message(ConnectionEndpoint.CRYPTO_ORACLE, json.dumps(request).encode('utf-8'), True)
         ciphertext = ciphertext['data']
-        print("Ciphertext in ack {}".format(ciphertext))
+        # print("Ciphertext in ack {}".format(ciphertext))
 
         ack.setfieldval("Message Authentication Hash", string_to_ascii(ciphertext[:24]))
         SessionInstance.get_instance().nr_ack_send += 1
@@ -302,20 +402,20 @@ class Scapy:
     def handle_received_encrypted_packet(self, packet):
         a = AEADPacketDynamic(packet[0][1][1].payload.load)
         a.parse()
-        print(">>>>>>>> Received packet with MAH: {}".format(a.get_field(AEADFieldNames.MESSAGE_AUTHENTICATION_HASH)))
+        # print(">>>>>>>> Received packet with MAH: {}".format(a.get_field(AEADFieldNames.MESSAGE_AUTHENTICATION_HASH)))
 
         # Start key derixvation
         SessionInstance.get_instance().div_nonce = a.get_field(AEADFieldNames.DIVERSIFICATION_NONCE)
         SessionInstance.get_instance().message_authentication_hash = a.get_field(AEADFieldNames.MESSAGE_AUTHENTICATION_HASH)
         packet_number = a.get_field(AEADFieldNames.PACKET_NUMBER)
         SessionInstance.get_instance().packet_number = packet_number
-        print("Packet Number {}".format(packet_number))
+        # print("Packet Number {}".format(packet_number))
         SessionInstance.get_instance().largest_observed_packet_number = packet_number
         SessionInstance.get_instance().associated_data = a.get_associated_data()
-        print("Associated Data {}".format(SessionInstance.get_instance().associated_data))
+        # print("Associated Data {}".format(SessionInstance.get_instance().associated_data))
         ciphertext = split_at_nth_char(a.get_field(AEADFieldNames.ENCRYPTED_FRAMES))
 
-        print("Received peer public value {}".format(SessionInstance.get_instance().peer_public_value))
+        # print("Received peer public value {}".format(SessionInstance.get_instance().peer_public_value))
         dhke.generate_keys(SessionInstance.get_instance().peer_public_value, SessionInstance.get_instance().shlo_received)
         # SessionInstance.get_instance().packet_number = packet_number
 
@@ -361,7 +461,7 @@ class Scapy:
         conf.L3socket = L3RawSocket
         SessionInstance.get_instance().chlo = extract_from_packet_as_bytestring(chlo, start=31)   # CHLO from the CHLO tag, which starts at offset 26 (22 header + frame type + stream id + offset)
 
-        print("Send full CHLO")
+        # print("Send full CHLO")
 
         p = IP(dst=SessionInstance.get_instance().destination_ip) / UDP(dport=6121, sport=61250) / chlo
         # Maybe we cannot assume that is just a version negotiation packet?
@@ -399,8 +499,9 @@ class Scapy:
         p = IP(dst=SessionInstance.get_instance().destination_ip) / UDP(dport=6121, sport=61250) / a / Raw(load=string_to_ascii(ciphertext[24:]))
         # ans, _ = sr(p, count=3)
         send(p)
-        self.previous_result = "closed"
-        self.learner.respond("closed")
+        self.wait_for_signal_or_expiration()
+        self.processed = False
+        self.sniffer.remove_observer(self)
         time.sleep(1)
 
     def send_full_chlo_to_existing_connection(self):
@@ -410,7 +511,11 @@ class Scapy:
         """
         try:
             previous_session = SessionModel.get(SessionModel.id == 1)
+            self.logger.info(previous_session)
             self.logger.info("Server config Id {}".format(previous_session.server_config_id))
+            self.logger.info(SessionInstance.get_instance().app_keys)
+            SessionInstance.get_instance().last_received_rej = "-1" # I want to force the sniffer to generate a new set of keys.
+            SessionInstance.get_instance().zero_rtt = True
 
             # The order is important!
             tags = [
@@ -472,7 +577,7 @@ class Scapy:
                 },
                 {
                     'name': 'XLCT',
-                    'value': '7accfb0fbd674011'
+                    'value': '8d884a6c79a0e6de'
                 },
                 {
                     'name': 'CFCW',
@@ -482,7 +587,7 @@ class Scapy:
                     'name': 'SFCW',
                     'value': '00800000'
                 },
-            ]
+        ]
 
             d = DynamicCHLOPacket(tags)
             body = d.build_body()
@@ -495,7 +600,7 @@ class Scapy:
             SessionInstance.get_instance().peer_public_value = bytes.fromhex(previous_session.public_value)
             self.logger.info("Using connection Id {}".format(SessionInstance.get_instance().connection_id))
             SessionInstance.get_instance().shlo_received = False
-            SessionInstance.get_instance().zero_rtt = True
+            # SessionInstance.get_instance().zero_rtt = True  # This one should only be set if the Zero RTT CHLO does not result in a REJ.
             #
             a = FullCHLOPacketNoPadding()
             a.setfieldval('Packet Number', PacketNumberInstance.get_instance().get_next_packet_number())
@@ -518,7 +623,7 @@ class Scapy:
             #
             a.setfieldval('Message Authentication Hash', string_to_ascii(message_authentication_hash))
             #
-            print("Send full CHLO from existing connection")
+            # print("Send full CHLO from existing connection")
             #
             p = IP(dst=SessionInstance.get_instance().destination_ip) / UDP(dport=6121, sport=61250) / a / Raw(
                 load=string_to_ascii(body))
@@ -530,15 +635,7 @@ class Scapy:
             self.processed = False
             self.sniffer.remove_observer(self)
         except Exception:
-            # table is not found probably
-            print("Table not found")
-            self.learner.respond("NOT-ZERO")
-
-        # ans, _ = sr(p)
-        # self.handle_received_encrypted_packet(ans)
-        # self.send_ack_for_encrypted_message()
-        # elapsed = time.time() - start
-        # self.average_response_time.append(elapsed)
+            self.send_chlo(False)
 
     def send_encrypted_request(self):
         """
@@ -550,12 +647,16 @@ class Scapy:
         # Generate forward secure keys if it hasn't already been done.
         current_app_key = SessionInstance.get_instance().app_keys
         if current_app_key['type'] != "FORWARD" or current_app_key['mah'] != SessionInstance.get_instance().last_received_shlo:
-            key = dhke.generate_keys(SessionInstance.get_instance().peer_public_value, True, self.logger)
-            SessionInstance.get_instance().app_keys['type'] = "FORWARD"
-            SessionInstance.get_instance().app_keys['mah'] = SessionInstance.get_instance().last_received_shlo
-            SessionInstance.get_instance().app_keys['key'] = key
+            if len(SessionInstance.get_instance().peer_public_value) == 0:
+                pass
+            else:
+                key = dhke.generate_keys(SessionInstance.get_instance().peer_public_value, True, self.logger)
+                SessionInstance.get_instance().app_keys['type'] = "FORWARD"
+                SessionInstance.get_instance().app_keys['mah'] = SessionInstance.get_instance().last_received_shlo
+                SessionInstance.get_instance().app_keys['key'] = key
 
         get_request = "800300002501250000000500000000FF418FF1E3C2E5F23A6BA0AB9EC9AE38110782848750839BD9AB7A85ED6988B4C7"
+
         packet_number = PacketNumberInstance.get_instance().get_next_packet_number()
         ciphertext = CryptoManager.encrypt(bytes.fromhex(get_request), packet_number, SessionInstance.get_instance(), self.logger)
 
@@ -628,28 +729,37 @@ s = Scapy()
 #         print("FINISHED OPERATION {}".format(operation))
 #         time.sleep(2)
 # print("Done?!")
-# for i in tqdm(range(2)):
+times = []
+for i in tqdm(range(10)):
 # s.logger.info(">>>>>>>>>>>> Starting with round {}".format(i))
-s.logger.info("Resetting")
+# s.logger.info("Resetting")
+    s.send(ResetEvent())
+    start = time.time()
+    s.send(SendInitialCHLOEvent())
+#     s.send(SendInitialCHLOEvent())
+    s.send(SendFullCHLOEvent())
+    s.send(SendGETRequestEvent())
+    s.send(CloseConnectionEvent())
+    times.append(time.time()-start)
+#     s.send(CloseConnectionEvent())
+    s.logger.info("Currently at {} out of 10".format(i))
+
+times = sorted(times)
+s.logger.info("All execution times {}".format(times))
+s.logger.info("Median execution time is {}".format(median(times)))
+
 # s.send(ResetEvent())
-s.send(SendInitialCHLOEvent())
-s.send(SendFullCHLOEvent())
-# s.send(SendGETRequestEvent())
-# s.send(CloseConnectionEvent())
+# s.send(ZeroRTTCHLOEvent())
+#     s.send(SendGETRequestEvent())
+#     s.send(ResetEvent())
 # s.send(ZeroRTTCHLOEvent())
 # s.send(SendGETRequestEvent())
-
-#     s.logger.info("<<<<<<<<<<<<< Finished with round {}".format(i))
-
-# print("Currently at {}".format(i+1))
-# print("Median response time {} \nAverage response time {}".format(median(s.response_times), mean(s.response_times)))
-# s.stop_sniffer()
-# except Exception:
-#     print("!!!!!!!!!!!!!!!!!!!!!!!!ERROR!!!!!!! {}".format())
-# print("Mean time {}".format(median(s.average_response_time)))
-# 324
-
-# print("Starting public reset test")
-# s.reset()
-# for i in range(5):
-#     s.send_encrypted_request()
+# s.send(SendFullCHLOEvent())
+# s.send(SendInitialCHLOEvent())
+# s.send(SendInitialCHLOEvent())
+# s.send(SendFullCHLOEvent())
+# s.send(ZeroRTTCHLOEvent())
+# s.send(ZeroRTTCHLOEvent())
+# s.send(ZeroRTTCHLOEvent())
+# s.send(SendGETRequestEvent())
+# s.send(SendInitialCHLOEvent())

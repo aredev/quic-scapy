@@ -32,7 +32,7 @@ class GetRequestSender:
         self.__instance = instance
 
     def packet_update(self, packet):
-        print("Received update from the Sniffer thread")
+        # print("Received update from the Sniffer thread")
         a = AEADPacketDynamic(packet[0][1][1].payload.load)
         a.parse()
         print(">>>>>>>> Received packet with MAH: {}".format(a.get_field(AEADFieldNames.MESSAGE_AUTHENTICATION_HASH)))
@@ -57,7 +57,7 @@ class GetRequestSender:
         processor = FramesProcessor(split_at_nth_char(a.get_field(AEADFieldNames.ENCRYPTED_FRAMES)))
         processor.process(self)
 
-        print("GETTER received packets {}".format(self.__received_packets))
+        # print("GETTER received packets {}".format(self.__received_packets))
         if self.__received_packets < 3:
             self.__received_packets += 1
         else:
@@ -79,7 +79,7 @@ class GetRequestSender:
         p = IP(dst=SessionInstance.get_instance().destination_ip) / UDP(dport=6121, sport=61250) / a / Raw(load=string_to_ascii(ciphertext[24:]))
         # self.__sniffer.add_observer(self)
         send(p)
-        print("Done sending...")
+        # print("Done sending...")
 
     def is_finished(self):
         return self.__finished
@@ -119,12 +119,12 @@ class GetRequestSender:
             'nonce': keys['iv1'].hex() + next_packet_number_nonce.hex().ljust(16, '0')
         }
 
-        print("Ack request for encryption {}".format(request))
+        # print("Ack request for encryption {}".format(request))
 
         ciphertext = CryptoConnectionManager.send_message(ConnectionEndpoint.CRYPTO_ORACLE,
                                                                     json.dumps(request).encode('utf-8'), True)
         ciphertext = ciphertext['data']
-        print("Ciphertext in ack {}".format(ciphertext))
+        # print("Ciphertext in ack {}".format(ciphertext))
 
         ack.setfieldval("Message Authentication Hash", string_to_ascii(ciphertext[:24]))
         SessionInstance.get_instance().nr_ack_send += 1
@@ -132,5 +132,5 @@ class GetRequestSender:
         p = IP(dst=SessionInstance.get_instance().destination_ip) / UDP(dport=6121, sport=61250) / ack / Raw(
             load=string_to_ascii(ciphertext[24:]))
         send(p)
-        print("After sending ack...")
+        # print("After sending ack...")
         self.__finished = True

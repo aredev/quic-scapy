@@ -736,9 +736,9 @@ class FullCHLOPacket(Packet):
         StrFixedLenField("PDMD_Value", "X509", 4),
         LEIntField("ICSL_Value", 30),
         StrFixedLenField("PUBS_Value", string_to_ascii("1403c2f3138a820f8114f282c4837d585bd00782f4ec0e5f1d39c06c49cc8043"), 32),
-        LEIntField("MIDS_Value", 100),
+        LEIntField("MIDS_Value", 65000),
         StrFixedLenField("KEXS_Value", "C255", 4),
-        StrFixedLenField("XLCT_Value", string_to_ascii("7accfb0fbd674011"), 8),
-        LEIntField("CFCW_Value", 49152),
-        LEIntField("SFCW_Value", 32768),
+        StrFixedLenField("XLCT_Value", string_to_ascii("8d884a6c79a0e6de"), 8),
+        LEIntField("CFCW_Value", 65000),
+        LEIntField("SFCW_Value", 65000),
     ]

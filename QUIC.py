@@ -1052,10 +1052,10 @@ class QUICHeader(Packet):
         # XByteField("Client_nonce30", 0x55),
         # XByteField("Client_nonce31", 0x05),
 
-        LEIntField("MIDS_Value", 100),
+        LEIntField("MIDS_Value", 65000),
         # LEIntField("SCLS_Value", 1),
-        LEIntField("CFCW_Value", 49152),
-        LEIntField("SFCW_Value", 32768),
+        LEIntField("CFCW_Value", 65000),
+        LEIntField("SFCW_Value", 65000),
 
 
         # Padding Frame Type

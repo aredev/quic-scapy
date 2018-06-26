@@ -28,5 +28,9 @@ class CacheInstance:
     def add_session_model(self, model: SessionModel):
         model.save()
 
+    def remove_session_model(self):
+        self.__db.drop_tables([SessionModel])
+        self.__db.create_tables([SessionModel])
+
     def retrieve_current_session(self):
         return SessionModel.select()

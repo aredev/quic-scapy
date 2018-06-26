@@ -19,7 +19,7 @@ class LearnerConnectionInstance:
     def set_up_communication_server(self):
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # host = '192.168.43.40'
-        host = '192.168.1.71'
+        host = '192.168.1.73'
         port = 4142
         ip = socket.gethostbyname(host)
         self.__socket.bind((host, port))
